@@ -1,12 +1,15 @@
-// Pipeline CI — Frontend Angular (équivalent microservice Evenement)
-// Job Jenkins recommandé : devops-frontend_CI
-// Prérequis agent Linux : Docker (SonarQube via image sonarsource/sonar-scanner-cli, pas besoin de sonar-scanner sur l’hôte)
+// Pipeline CI — Frontend Angular
+// Réduit la conso disque :
+// - une seule build Angular dans le Dockerfile (plus de npm ci/ng build dans WORKSPACE qui dupliquait Go de node_modules + dist).
+// - post : suppression des artefacts locaux + images intermédiaires de ce build uniquement.
+// Si Jenkins affiche encore "No space left on device", libérez aussi le disque sur le master : /var/lib/jenkins + vieux workspaces.
 
 pipeline {
     agent any
     options {
         timestamps()
         disableConcurrentBuilds()
+        skipDefaultCheckout true
     }
     environment {
         GIT_URL               = 'https://github.com/AZZOUZOMAR1/devopsFrontend.git'
@@ -30,23 +33,16 @@ pipeline {
                         credentialsId: "${GIT_CREDENTIALS_ID}"
                     ]]
                 ])
+                // Pas de leftovers d’un build précédent
+                sh '''#!/bin/bash
+                    rm -rf node_modules dist .angular 2>/dev/null || true
+                '''
             }
         }
-        stage('2. Build Angular (npm + ng)') {
-            steps {
-                sh """
-                    docker run --rm \\
-                        -v ${env.WORKSPACE}:/app \\
-                        -w /app \\
-                        node:20-bookworm-slim \\
-                        bash -c "npm ci && npx ng build --configuration=production"
-                """
-            }
-        }
-        stage('3. SonarQube devops-frontend') {
+
+        stage('2. SonarQube devops-frontend') {
             steps {
                 withSonarQubeEnv("${SONARQUBE_SERVER}") {
-                    // SONAR_AUTH_TOKEN est injecté par le plugin ; l'image Docker attend souvent SONAR_TOKEN
                     sh '''#!/bin/bash
                         set -e
                         export SONAR_TOKEN="${SONAR_AUTH_TOKEN:-$SONAR_TOKEN}"
@@ -63,7 +59,8 @@ pipeline {
                 }
             }
         }
-        stage('4. Build Docker Image devops-frontend') {
+
+        stage('3. Build Docker Image devops-frontend') {
             steps {
                 retry(3) {
                     sh 'docker pull nginx:1.27-alpine'
@@ -73,7 +70,8 @@ pipeline {
                 sh "docker tag ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} ${DOCKER_IMAGE_NAME}:latest"
             }
         }
-        stage('Security Scan (Trivy)') {
+
+        stage('4. Security Scan (Trivy)') {
             steps {
                 sh """
                   docker run --rm \\
@@ -89,6 +87,7 @@ pipeline {
                 """
             }
         }
+
         stage('5. Push Docker Image devops-frontend') {
             steps {
                 withCredentials([usernamePassword(
@@ -108,17 +107,24 @@ pipeline {
             }
         }
     }
+
     post {
         success {
             echo "✅ CI devops-frontend OK - image ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}"
-            archiveArtifacts artifacts: 'dist/my-project/browser/**/*', fingerprint: true, allowEmptyArchive: true
             build job: 'devops-frontend_CD', wait: false
         }
         failure {
-            echo '❌ CI devops-frontend échoué - vérifier build/sonar/docker logs'
+            echo '❌ CI devops-frontend échoué — logs build / Sonar / Docker / Trivy'
         }
         always {
-            sh 'docker logout || true'
+            sh """
+#!/bin/bash
+set +e
+docker logout >/dev/null 2>&1 || true
+rm -rf \"\${WORKSPACE}/node_modules\" \"\${WORKSPACE}/dist\" \"\${WORKSPACE}/.angular\" || true
+# Retire uniquement cette image construite localement (après push, le registre conserve le manifeste).
+docker image rm ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} ${DOCKER_IMAGE_NAME}:latest 2>/dev/null || true
+"""
         }
     }
 }
