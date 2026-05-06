@@ -1,0 +1,9 @@
+# Déploiement du frontend Angular (image construite par la pipeline CI).
+# Port hôte 8080 -> conteneur 80 (ajustez si besoin, ex. 80:80 derrière un reverse proxy).
+services:
+  devops-frontend:
+    image: omarazzouz/devops-frontend:latest
+    container_name: devops-frontend-service
+    ports:
+      - "8080:80"
+    restart: unless-stopped
