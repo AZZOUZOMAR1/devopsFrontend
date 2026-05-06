@@ -1,0 +1,179 @@
+<div class="jobs-container">
+  <div class="header">
+    <div class="header-content">
+      <h1>
+        <mat-icon>work_outline</mat-icon>
+        Offres d'emploi
+      </h1>
+      <p class="subtitle">{{ filteredOffers.length }} offre(s) disponible(s)</p>
+    </div>
+
+    <button mat-raised-button (click)="toggleView()" class="map-toggle-btn">
+      <mat-icon>{{ showMap ? 'view_list' : 'map' }}</mat-icon>
+      {{ showMap ? 'Vue Liste' : 'Vue Carte' }}
+    </button>
+  </div>
+
+  <!-- Filtres -->
+  <mat-card class="filters-card">
+    <mat-card-content>
+      <div class="filters-row">
+        <mat-form-field appearance="outline" class="search-field">
+          <mat-label>Rechercher</mat-label>
+          <mat-icon matPrefix>search</mat-icon>
+          <input matInput [(ngModel)]="searchTerm" (ngModelChange)="onSearchChange()"
+                 placeholder="Titre, entreprise, lieu..." />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="filter-field">
+          <mat-label>Type de contrat</mat-label>
+          <mat-select [(ngModel)]="selectedContractType" (selectionChange)="onContractTypeChange()">
+            <mat-option value="ALL">Tous</mat-option>
+            <mat-option *ngFor="let type of contractTypes.slice(1)" [value]="type">
+              {{ type }}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="filter-field">
+          <mat-label>Trier par</mat-label>
+          <mat-select [value]="sortMode" (selectionChange)="setSortMode($event.value)">
+            <mat-option value="MATCHING">Compatibilité</mat-option>
+            <mat-option value="RECENT">Plus récentes</mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Skeleton loader pendant le chargement -->
+  <div *ngIf="loading" class="skeleton-wrapper">
+    <div class="skeleton-grid">
+      <mat-card *ngFor="let i of [1,2,3,4,5,6]" class="skeleton-card">
+        <mat-card-header>
+          <div class="skeleton-avatar"></div>
+          <mat-card-title><span class="skeleton-line title"></span></mat-card-title>
+          <mat-card-subtitle><span class="skeleton-line subtitle"></span></mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          <span class="skeleton-line chip"></span>
+          <span class="skeleton-line body"></span>
+          <span class="skeleton-line body short"></span>
+        </mat-card-content>
+      </mat-card>
+    </div>
+  </div>
+
+  <!-- Vue Carte -->
+  <div *ngIf="!loading && showMap">
+    <div *ngIf="!hasOffersWithCoords()" class="no-map-data">
+      <mat-icon>location_off</mat-icon>
+      <p>Aucune offre avec localisation GPS disponible.<br>
+         Créez des offres avec un lieu réel pour les voir sur la carte.</p>
+    </div>
+    <div id="offers-map" class="map-container"></div>
+  </div>
+
+  <!-- Vue Liste -->
+  <div *ngIf="!loading && !showMap && filteredOffers.length > 0" class="offers-grid">
+    <mat-card *ngFor="let offer of paginatedOffers" class="offer-card" (click)="viewDetails(offer.id!)">
+      <mat-card-header>
+        <div mat-card-avatar class="offer-avatar">
+          <mat-icon>business_center</mat-icon>
+        </div>
+        <mat-card-title>{{ offer.title || '-' }}</mat-card-title>
+        <mat-card-subtitle>{{ offer.company || '-' }}</mat-card-subtitle>
+      </mat-card-header>
+
+      <mat-card-content>
+        <div class="offer-badges">
+          <span class="contract-chip" [ngClass]="'chip-' + (offer.contractType || 'CDI')">
+            {{ offer.contractType || '-' }}
+          </span>
+        </div>
+
+        <div class="offer-info">
+          <div class="info-item">
+            <mat-icon>location_on</mat-icon>
+            <span>{{ offer.location || '-' }}</span>
+          </div>
+          <div class="info-item" *ngIf="offer.salary">
+            <mat-icon></mat-icon>
+            <span>{{ offer.salary | number }} TND/an</span>
+          </div>
+          <div class="info-item deadline" *ngIf="offer.deadline">
+            <mat-icon>event</mat-icon>
+            <span>Limite: {{ offer.deadline | date:'dd/MM/yyyy' }}</span>
+          </div>
+        </div>
+
+        <p class="offer-description">{{ offer.description || '' }}</p>
+
+        <!-- Badge de compatibilité (matching) -->
+        <div class="match-badge"
+             *ngIf="hasMatch(offer.id!)"
+             [ngStyle]="{'background': getMatchBgColor(offer.id!), 'border-color': getMatchColor(offer.id!)}">
+          <div class="match-header">
+            <span class="match-label">
+              <mat-icon [ngStyle]="{'color': getMatchColor(offer.id!)}">psychology</mat-icon>
+              Compatibilité
+            </span>
+            <span class="match-percent" [ngStyle]="{'color': getMatchColor(offer.id!)}">
+              {{ getMatchPercent(offer.id!) }}%
+            </span>
+          </div>
+          <div class="match-bar-track">
+            <div class="match-bar-fill"
+                 [style.width]="getMatchPercent(offer.id!) + '%'"
+                 [ngStyle]="{'background': getMatchColor(offer.id!)}">
+            </div>
+          </div>
+        </div>
+
+        <!-- ✅ Compteur / date d'expiration (affiché uniquement si expirationDate définie) -->
+        <div class="expiry-timer"
+             *ngIf="offer.expirationDate"
+             [ngStyle]="{'color': getExpiryColor(offer.id!)}">
+          <mat-icon>timer</mat-icon>
+          <span>{{ getExpiryTimer(offer.id!) }}</span>
+        </div>
+      </mat-card-content>
+
+      <mat-card-actions>
+        <button mat-raised-button color="primary">
+          <mat-icon>visibility</mat-icon>
+          Voir l'offre
+        </button>
+        <button mat-icon-button
+                (click)="toggleSave($event, offer)"
+                [class.saved]="isSaved(offer.id!)"
+                matTooltip="{{ isSaved(offer.id!) ? 'Retirer des favoris' : 'Sauvegarder' }}">
+          <mat-icon>{{ isSaved(offer.id!) ? 'bookmark' : 'bookmark_border' }}</mat-icon>
+        </button>
+      </mat-card-actions>
+
+    </mat-card>  <!-- ✅ fermeture mat-card -->
+  </div>
+
+  
+
+  <!-- Pagination liste offres -->
+  <app-pagination
+    *ngIf="!loading && !showMap && filteredOffers.length > 0"
+    [totalItems]="filteredOffers.length"
+    [pageSize]="pageSize"
+    [currentPage]="currentPage"
+    (pageChange)="onPageChange($event)"
+    (pageSizeChange)="onPageSizeChange($event)">
+  </app-pagination>
+
+  <!-- État vide : uniquement si chargement terminé ET liste réellement vide (évite doublon avec les cartes) -->
+  <mat-card *ngIf="loadCompleted && !loading && !showMap && filteredOffers.length === 0" class="empty-state">
+    <mat-icon class="empty-icon">inbox</mat-icon>
+    <h3>Aucune offre trouvée</h3>
+    <p>{{ searchTerm || selectedContractType !== 'ALL' ? 'Modifiez vos filtres.' : 'Aucune offre disponible.' }}</p>
+  </mat-card>
+  <!-- ✅ Ajoute ICI -->
+<app-chatbot></app-chatbot>
+
+</div>

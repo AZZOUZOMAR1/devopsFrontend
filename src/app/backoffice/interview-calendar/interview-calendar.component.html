@@ -1,0 +1,420 @@
+<div class="calendar-wrapper">
+
+  <!-- ─── HEADER ──────────────────────────────── -->
+  <div class="page-header">
+    <div class="header-left">
+      <div class="header-icon">
+        <mat-icon>calendar_month</mat-icon>
+      </div>
+      <div>
+        <h1>Interview Calendar</h1>
+        <p>Manage and track all scheduled interviews</p>
+      </div>
+    </div>
+    <button mat-raised-button class="refresh-btn"
+            (click)="loadInterviews()">
+      <mat-icon>refresh</mat-icon>
+      Refresh
+    </button>
+  </div>
+
+  <!-- ─── KPI CARDS ───────────────────────────── -->
+  <div class="kpi-row">
+
+    <div class="kpi-card total">
+      <div class="kpi-left">
+        <div class="kpi-icon total-icon">
+          <mat-icon>event_note</mat-icon>
+        </div>
+        <div class="kpi-info">
+          <span class="kpi-number">{{ totalInterviews }}</span>
+          <span class="kpi-label">Total Interviews</span>
+        </div>
+      </div>
+      <div class="kpi-chart">
+        <div class="kpi-bar" style="height: 100%; background: #7c3aed22;"></div>
+      </div>
+    </div>
+
+    <div class="kpi-card today">
+      <div class="kpi-left">
+        <div class="kpi-icon today-icon">
+          <mat-icon>today</mat-icon>
+        </div>
+        <div class="kpi-info">
+          <span class="kpi-number">{{ todayInterviews }}</span>
+          <span class="kpi-label">Today</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="kpi-card upcoming">
+      <div class="kpi-left">
+        <div class="kpi-icon upcoming-icon">
+          <mat-icon>schedule</mat-icon>
+        </div>
+        <div class="kpi-info">
+          <span class="kpi-number">{{ upcomingInterviews }}</span>
+          <span class="kpi-label">Upcoming</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="kpi-card past">
+      <div class="kpi-left">
+        <div class="kpi-icon past-icon">
+          <mat-icon>check_circle</mat-icon>
+        </div>
+        <div class="kpi-info">
+          <span class="kpi-number">
+            {{ totalInterviews - upcomingInterviews }}
+          </span>
+          <span class="kpi-label">Completed</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ─── LOADING ───────────────────────────────── -->
+  <div *ngIf="loading" class="loading-state">
+    <mat-progress-spinner mode="indeterminate" diameter="48">
+    </mat-progress-spinner>
+    <p>Loading interviews...</p>
+  </div>
+
+  <!-- ─── CONTENU ───────────────────────────────── -->
+  <div *ngIf="!loading" class="content-layout">
+
+    <!-- ─── LISTE INTERVIEWS ─────────────────────── -->
+    <div class="interviews-section">
+
+      <!-- Filters -->
+      <div class="filters-bar">
+        <div class="filter-tabs">
+          <button class="filter-tab"
+                  [class.active]="activeFilter === 'all'"
+                  (click)="setFilter('all')">
+            <mat-icon>list_alt</mat-icon>
+            All
+            <span class="tab-count">{{ totalInterviews }}</span>
+          </button>
+          <button class="filter-tab"
+                  [class.active]="activeFilter === 'today'"
+                  (click)="setFilter('today')">
+            <mat-icon>wb_sunny</mat-icon>
+            Today
+            <span class="tab-count">{{ todayInterviews }}</span>
+          </button>
+          <button class="filter-tab"
+                  [class.active]="activeFilter === 'upcoming'"
+                  (click)="setFilter('upcoming')">
+            <mat-icon>schedule</mat-icon>
+            Upcoming
+            <span class="tab-count">{{ upcomingInterviews }}</span>
+          </button>
+          <button class="filter-tab"
+                  [class.active]="activeFilter === 'past'"
+                  (click)="setFilter('past')">
+            <mat-icon>history</mat-icon>
+            Completed
+            <span class="tab-count">
+              {{ totalInterviews - upcomingInterviews }}
+            </span>
+          </button>
+        </div>
+
+        <!-- Search -->
+        <div class="search-box">
+          <mat-icon>search</mat-icon>
+          <input type="text"
+                 [(ngModel)]="searchTerm"
+                 (ngModelChange)="applyFilter()"
+                 placeholder="Search candidate..."/>
+        </div>
+      </div>
+
+      <!-- Empty -->
+      <div *ngIf="filteredEvents.length === 0" class="empty-state">
+        <div class="empty-icon">
+          <mat-icon>event_busy</mat-icon>
+        </div>
+        <h3>No interviews found</h3>
+        <p>Try changing the filter or refresh the page</p>
+      </div>
+
+      <!-- Cards -->
+      <div class="interviews-grid">
+
+        <div *ngFor="let event of filteredEvents; let i = index"
+             class="interview-card"
+             [class.card-today]="isToday(event.start)"
+             [class.card-past]="isPast(event.start)"
+             [class.card-upcoming]="isUpcoming(event.start)"
+             (click)="onEventClick(event)">
+
+          <!-- Card Top -->
+          <div class="card-top">
+
+            <!-- Avatar -->
+            <div class="candidate-avatar"
+                 [class.av-today]="isToday(event.start)"
+                 [class.av-past]="isPast(event.start)"
+                 [class.av-upcoming]="isUpcoming(event.start)">
+              {{ event.extendedProps.applicantName
+                  .charAt(0).toUpperCase() }}
+            </div>
+
+            <!-- Info -->
+            <div class="candidate-info">
+              <h4>{{ event.extendedProps.applicantName }}</h4>
+              <p>
+                <mat-icon>email</mat-icon>
+                {{ event.extendedProps.applicantEmail }}
+              </p>
+            </div>
+
+            <!-- Status Badge -->
+            <div class="status-badge"
+                 [class.sb-today]="isToday(event.start)"
+                 [class.sb-past]="isPast(event.start)"
+                 [class.sb-upcoming]="isUpcoming(event.start)">
+              <span class="sb-dot"></span>
+              {{ isToday(event.start) ? 'Today'
+                : isPast(event.start) ? 'Done'
+                : 'Soon' }}
+            </div>
+
+          </div>
+
+          <!-- Divider -->
+          <div class="card-divider"></div>
+
+          <!-- Card Middle -->
+          <div class="card-middle">
+
+            <div class="info-pill">
+              <mat-icon>work</mat-icon>
+              {{ event.extendedProps.offerTitle }}
+            </div>
+
+            <div class="info-pill">
+              <mat-icon>business</mat-icon>
+              {{ event.extendedProps.company }}
+            </div>
+
+          </div>
+
+          <!-- Card Bottom -->
+          <div class="card-bottom"
+               [class.cb-today]="isToday(event.start)"
+               [class.cb-past]="isPast(event.start)"
+               [class.cb-upcoming]="isUpcoming(event.start)">
+
+            <div class="date-info">
+              <div class="date-block">
+                <mat-icon>calendar_today</mat-icon>
+                <span>{{ event.start | date:'EEE, dd MMM yyyy' }}</span>
+              </div>
+              <div class="date-block">
+                <mat-icon>schedule</mat-icon>
+                <span>{{ event.start | date:'HH:mm' }}</span>
+              </div>
+            </div>
+
+            <div class="view-btn">
+              View <mat-icon>arrow_forward</mat-icon>
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ─── SIDEBAR STATS ─────────────────────── -->
+    <div class="sidebar-stats">
+
+      <!-- This Week -->
+      <div class="stat-card">
+        <div class="stat-card-header">
+          <mat-icon>date_range</mat-icon>
+          <h4>This Week</h4>
+        </div>
+        <div class="stat-number">{{ thisWeekInterviews }}</div>
+        <div class="stat-label">interviews scheduled</div>
+        <div class="stat-bar-track">
+          <div class="stat-bar-fill week-fill"
+               [style.width]="totalInterviews > 0
+                 ? (thisWeekInterviews / totalInterviews * 100) + '%'
+                 : '0%'">
+          </div>
+        </div>
+      </div>
+
+      <!-- This Month -->
+      <div class="stat-card">
+        <div class="stat-card-header">
+          <mat-icon>calendar_month</mat-icon>
+          <h4>This Month</h4>
+        </div>
+        <div class="stat-number">{{ thisMonthInterviews }}</div>
+        <div class="stat-label">interviews scheduled</div>
+        <div class="stat-bar-track">
+          <div class="stat-bar-fill month-fill"
+               [style.width]="totalInterviews > 0
+                 ? (thisMonthInterviews / totalInterviews * 100) + '%'
+                 : '0%'">
+          </div>
+        </div>
+      </div>
+
+      <!-- Upcoming List -->
+      <div class="upcoming-card">
+        <div class="stat-card-header">
+          <mat-icon>notifications_active</mat-icon>
+          <h4>Next Interviews</h4>
+        </div>
+        <div class="upcoming-list">
+          <div *ngIf="nextInterviews.length === 0"
+               class="no-upcoming">
+            No upcoming interviews
+          </div>
+          <div *ngFor="let ev of nextInterviews"
+               class="upcoming-item"
+               (click)="onEventClick(ev)">
+            <div class="upcoming-avatar">
+              {{ ev.extendedProps.applicantName.charAt(0).toUpperCase() }}
+            </div>
+            <div class="upcoming-info">
+              <span class="upcoming-name">
+                {{ ev.extendedProps.applicantName }}
+              </span>
+              <span class="upcoming-date">
+                {{ ev.start | date:'dd MMM, HH:mm' }}
+              </span>
+            </div>
+            <mat-icon class="upcoming-arrow">chevron_right</mat-icon>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+<!-- ─── OVERLAY ───────────────────────────────── -->
+<div class="overlay" *ngIf="showPanel" (click)="closePanel()"></div>
+
+<!-- ─── DETAIL PANEL ─────────────────────────── -->
+<div class="detail-panel" [class.open]="showPanel">
+  <ng-container *ngIf="selectedEvent">
+
+    <div class="panel-header"
+         [class.ph-today]="isToday(selectedEvent.start)"
+         [class.ph-past]="isPast(selectedEvent.start)"
+         [class.ph-upcoming]="isUpcoming(selectedEvent.start)">
+
+      <div class="panel-avatar-big">
+        {{ selectedEvent.extendedProps.applicantName
+            .charAt(0).toUpperCase() }}
+      </div>
+
+      <div class="panel-title">
+        <h3>{{ selectedEvent.extendedProps.applicantName }}</h3>
+        <p>{{ selectedEvent.extendedProps.applicantEmail }}</p>
+      </div>
+
+      <button mat-icon-button (click)="closePanel()" class="close-btn">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+
+    <!-- Panel Status -->
+    <div class="panel-status-bar"
+         [class.psb-today]="isToday(selectedEvent.start)"
+         [class.psb-past]="isPast(selectedEvent.start)"
+         [class.psb-upcoming]="isUpcoming(selectedEvent.start)">
+      <mat-icon>
+        {{ isToday(selectedEvent.start) ? 'today'
+          : isPast(selectedEvent.start) ? 'check_circle'
+          : 'schedule' }}
+      </mat-icon>
+      <span>
+        {{ isToday(selectedEvent.start) ? '🔥 Interview is Today!'
+          : isPast(selectedEvent.start) ? '✅ Interview Completed'
+          : '📅 Upcoming Interview' }}
+      </span>
+    </div>
+
+    <div class="panel-body">
+
+      <div class="detail-items">
+
+        <div class="detail-item">
+          <div class="detail-icon-wrap work-ic">
+            <mat-icon>work_outline</mat-icon>
+          </div>
+          <div class="detail-texts">
+            <span class="detail-lbl">Position</span>
+            <span class="detail-val">
+              {{ selectedEvent.extendedProps.offerTitle }}
+            </span>
+          </div>
+        </div>
+
+        <div class="detail-item">
+          <div class="detail-icon-wrap co-ic">
+            <mat-icon>business</mat-icon>
+          </div>
+          <div class="detail-texts">
+            <span class="detail-lbl">Company</span>
+            <span class="detail-val">
+              {{ selectedEvent.extendedProps.company }}
+            </span>
+          </div>
+        </div>
+
+        <div class="detail-item">
+          <div class="detail-icon-wrap cal-ic">
+            <mat-icon>calendar_today</mat-icon>
+          </div>
+          <div class="detail-texts">
+            <span class="detail-lbl">Date</span>
+            <span class="detail-val">
+              {{ selectedEvent.start | date:'EEEE, dd MMMM yyyy' }}
+            </span>
+          </div>
+        </div>
+
+        <div class="detail-item">
+          <div class="detail-icon-wrap time-ic">
+            <mat-icon>schedule</mat-icon>
+          </div>
+          <div class="detail-texts">
+            <span class="detail-lbl">Time</span>
+            <span class="detail-val">
+              {{ selectedEvent.start | date:'HH:mm' }}
+            </span>
+          </div>
+        </div>
+
+        <div class="detail-item">
+          <div class="detail-icon-wrap email-ic">
+            <mat-icon>email</mat-icon>
+          </div>
+          <div class="detail-texts">
+            <span class="detail-lbl">Email</span>
+            <span class="detail-val">
+              {{ selectedEvent.extendedProps.applicantEmail }}
+            </span>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </ng-container>
+</div>

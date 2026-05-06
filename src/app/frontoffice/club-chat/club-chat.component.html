@@ -1,0 +1,121 @@
+<div class="cc-page">
+  <div class="cc-bg" aria-hidden="true"></div>
+
+  <header class="cc-hero">
+    <div class="cc-hero__badge">
+      <mat-icon>forum</mat-icon>
+      <span>Espace membres</span>
+    </div>
+    <h1 class="cc-hero__title">Discussions <em>clubs</em></h1>
+    <p class="cc-hero__lead">Échangez avec votre communauté : salon du club ou fil de votre département.</p>
+  </header>
+
+  <div class="loading-container" *ngIf="loading">
+    <mat-progress-bar mode="indeterminate" class="cc-progress"></mat-progress-bar>
+  </div>
+
+  <div class="cc-card cc-card--state" *ngIf="!loading && !authService.isLoggedIn()">
+    <div class="cc-state-icon"><mat-icon>login</mat-icon></div>
+    <h2>Connexion requise</h2>
+    <p>Connectez-vous pour accéder aux salons de discussion de vos clubs.</p>
+  </div>
+
+  <div class="cc-card cc-card--state cc-card--error" *ngIf="!loading && loadError">
+    <div class="cc-state-icon"><mat-icon>cloud_off</mat-icon></div>
+    <h2>Impossible de charger vos clubs</h2>
+    <p>Vérifiez que le Gateway (8080) et le service Club (8087) sont démarrés.</p>
+    <button mat-flat-button class="cc-retry" (click)="loadClubsMembre()">
+      <mat-icon>refresh</mat-icon>
+      Réessayer
+    </button>
+  </div>
+
+  <div class="cc-card cc-card--state" *ngIf="!loading && !loadError && authService.isLoggedIn() && clubsMembre.length === 0">
+    <div class="cc-state-icon"><mat-icon>groups</mat-icon></div>
+    <h2>Aucun club pour l’instant</h2>
+    <p>Rejoignez un club pour débloquer sa discussion interne.</p>
+    <a mat-flat-button class="cc-cta" routerLink="/frontoffice/clubs">
+      <mat-icon>explore</mat-icon>
+      Découvrir les clubs
+    </a>
+  </div>
+
+  <div class="cc-workspace" *ngIf="!loading && clubsMembre.length > 0">
+    <div class="cc-toolbar">
+      <mat-icon class="cc-toolbar__icon">hub</mat-icon>
+      <mat-form-field appearance="outline" class="cc-select" subscriptSizing="dynamic">
+        <mat-label>Club actif</mat-label>
+        <mat-select [(ngModel)]="selectedClub" (selectionChange)="selectClub($event.value)" [compareWith]="compareClubs">
+          <mat-option *ngFor="let c of clubsMembre" [value]="c">{{ c.nom }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    <section class="cc-panel" *ngIf="selectedClub">
+      <div class="cc-panel__accent"></div>
+      <div class="cc-panel__header">
+        <div class="cc-panel__brand">
+          <span class="cc-panel__orb">
+            <mat-icon>chat</mat-icon>
+          </span>
+          <div>
+            <span class="cc-panel__eyebrow">Canal sélectionné</span>
+            <h2 class="cc-panel__name">{{ selectedClub.nom }}</h2>
+          </div>
+        </div>
+      </div>
+
+      <div class="cc-scope" role="tablist">
+        <button type="button" role="tab" class="cc-scope__btn" [class.cc-scope__btn--active]="selectedScope === 'CLUB'" (click)="switchScope('CLUB')">
+          <mat-icon>public</mat-icon>
+          Tout le club
+        </button>
+        <button type="button" role="tab" class="cc-scope__btn" [class.cc-scope__btn--active]="selectedScope === 'DEPARTEMENT'" [disabled]="!departementAffecte" (click)="switchScope('DEPARTEMENT')">
+          <mat-icon>workspaces</mat-icon>
+          <span *ngIf="departementAffecte">Dépt. {{ departementAffecte }}</span>
+          <span *ngIf="!departementAffecte">Département</span>
+        </button>
+      </div>
+
+      <div id="messages-container" class="cc-feed">
+        <div class="cc-feed__loading" *ngIf="loadingMessages">
+          <mat-spinner diameter="36"></mat-spinner>
+          <span>Chargement des messages…</span>
+        </div>
+        <div class="cc-feed__list" *ngIf="!loadingMessages">
+          <div
+            class="cc-bubble-wrap"
+            *ngFor="let msg of messages"
+            [class.cc-bubble-wrap--own]="isOwnMessage(msg)">
+            <div class="cc-bubble" [class.cc-bubble--own]="isOwnMessage(msg)">
+              <div class="cc-bubble__meta">
+                <span class="cc-bubble__avatar">{{ getDisplayName(msg)[0] || '?' }}</span>
+                <span class="cc-bubble__sender">{{ getDisplayName(msg) }}</span>
+                <time class="cc-bubble__time">{{ formatTime(msg.dateCreation) }}</time>
+              </div>
+              <p class="cc-bubble__text">{{ msg.contenu }}</p>
+            </div>
+          </div>
+          <div class="cc-feed__empty" *ngIf="messages.length === 0">
+            <mat-icon>waving_hand</mat-icon>
+            <p>Aucun message encore — lancez la conversation !</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="cc-composer">
+        <div class="cc-composer__field">
+          <input
+            type="text"
+            placeholder="Votre message…"
+            [(ngModel)]="newMessage"
+            (keydown.enter)="sendMessage()"
+            class="cc-composer__input">
+        </div>
+        <button mat-fab class="cc-send" color="primary" (click)="sendMessage()" [disabled]="!newMessage || !newMessage.trim()" aria-label="Envoyer">
+          <mat-icon>send</mat-icon>
+        </button>
+      </div>
+    </section>
+  </div>
+</div>

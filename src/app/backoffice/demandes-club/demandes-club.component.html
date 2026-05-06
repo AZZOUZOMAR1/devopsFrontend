@@ -1,0 +1,87 @@
+<div class="bo-page bo-page--demandes">
+  <div class="bo-bg" aria-hidden="true"></div>
+
+  <header class="bo-hero">
+    <div class="bo-hero__top">
+      <div class="bo-hero__badge">
+        <mat-icon>how_to_reg</mat-icon>
+        <span>Modération</span>
+      </div>
+      <button mat-stroked-button class="bo-refresh" (click)="loadDemandes()" [disabled]="loading">
+        <mat-icon>refresh</mat-icon>
+        Actualiser
+      </button>
+    </div>
+    <h1 class="bo-hero__title">Demandes d’adhésion <em>clubs</em></h1>
+    <p class="bo-hero__lead">Traitez les candidatures étudiantes, affectez un département et validez en un clic.</p>
+  </header>
+
+  <div class="bo-toolbar" *ngIf="!loading || clubs.length">
+    <mat-icon class="bo-toolbar__icon">filter_list</mat-icon>
+    <mat-form-field appearance="outline" class="bo-filter" subscriptSizing="dynamic">
+      <mat-label>Filtrer par club</mat-label>
+      <mat-select [(ngModel)]="selectedClubFilter" (selectionChange)="onClubFilterChange()">
+        <mat-option value="">Tous les clubs</mat-option>
+        <mat-option *ngFor="let c of clubs" [value]="c.id">{{ c.nom }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+  </div>
+
+  <div class="loading-container" *ngIf="loading">
+    <mat-progress-bar mode="indeterminate" class="bo-progress"></mat-progress-bar>
+  </div>
+
+  <div class="demandes-grid" *ngIf="!loading && demandesEnAttente.length > 0">
+    <article class="demande-card" *ngFor="let d of demandesEnAttente">
+      <div class="demande-card__shine"></div>
+      <div class="card-header">
+        <div class="avatar">
+          <span class="avatar-initials">{{ (d.prenomEtudiant || '?')[0] }}{{ (d.nomEtudiant || '?')[0] }}</span>
+        </div>
+        <div class="score-display" [ngClass]="getScoreClass(d.score)">
+          <span class="score-value">{{ (d.score / 10) | number:'1.1-1' }}</span>
+          <span class="score-max">/10</span>
+          <span class="score-label">{{ getScoreLabel(d.score) }}</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <h3 class="student-name">{{ d.prenomEtudiant }} {{ d.nomEtudiant }}</h3>
+        <p class="student-email">{{ d.emailEtudiant }}</p>
+        <div class="club-badge">
+          <mat-icon>groups</mat-icon>
+          {{ d.nomClub }}
+        </div>
+        <div class="club-badge club-badge--muted" *ngIf="d.departementSouhaite">
+          <mat-icon>apartment</mat-icon>
+          Souhaité : {{ d.departementSouhaite }}
+        </div>
+        <mat-form-field appearance="outline" class="bo-field-full" subscriptSizing="dynamic">
+          <mat-label>Département à affecter</mat-label>
+          <mat-select [ngModel]="getSelectedDepartement(d)" (ngModelChange)="setSelectedDepartement(d, $event)">
+            <mat-option *ngFor="let dep of getDepartementsForDemande(d)" [value]="dep">{{ dep }}</mat-option>
+          </mat-select>
+        </mat-form-field>
+        <p class="motivation-preview" [matTooltip]="d.texteMotivation || ''" matTooltipPosition="above">
+          {{ (d.texteMotivation || '') | slice:0:120 }}{{ (d.texteMotivation || '').length > 120 ? '...' : '' }}
+        </p>
+        <span class="date-badge"><mat-icon>schedule</mat-icon>{{ formatDateDemande(d.dateDemande) }}</span>
+      </div>
+      <div class="card-actions">
+        <button mat-flat-button class="btn-accept" (click)="accepterDemande(d)">
+          <mat-icon>check_circle</mat-icon>
+          Accepter
+        </button>
+        <button mat-stroked-button class="btn-refuse" (click)="refuserDemande(d)">
+          <mat-icon>cancel</mat-icon>
+          Refuser
+        </button>
+      </div>
+    </article>
+  </div>
+
+  <div class="bo-empty" *ngIf="!loading && demandesEnAttente.length === 0">
+    <div class="bo-empty__icon"><mat-icon>inbox</mat-icon></div>
+    <h3>Aucune demande en attente</h3>
+    <p>Les nouvelles candidatures apparaîtront ici automatiquement.</p>
+  </div>
+</div>

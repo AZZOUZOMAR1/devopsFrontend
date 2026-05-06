@@ -1,0 +1,256 @@
+<div class="bo-page bo-page--posts">
+  <div class="bo-bg" aria-hidden="true"></div>
+
+  <header class="bo-hero">
+    <div class="bo-hero__badge">
+      <mat-icon>auto_awesome</mat-icon>
+      <span>Communication</span>
+    </div>
+    <h1 class="bo-hero__title">Studio <em>posts</em> clubs</h1>
+    <p class="bo-hero__lead">Publiez des annonces riches et suivez les réactions et commentaires des membres.</p>
+  </header>
+
+  <div class="bo-toolbar">
+    <mat-icon class="bo-toolbar__icon">campaign</mat-icon>
+    <mat-form-field appearance="outline" class="bo-filter" subscriptSizing="dynamic">
+      <mat-label>Filtrer par club</mat-label>
+      <mat-select [(ngModel)]="selectedClubId" (selectionChange)="onClubChange()">
+        <mat-option [value]="null">Tous les clubs</mat-option>
+        <mat-option *ngFor="let c of clubs" [value]="c.id">{{ c.nom }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+  </div>
+
+  <mat-tab-group class="bo-posts-tabs" [(selectedIndex)]="selectedTabIndex" (selectedIndexChange)="onTabChange($event)" animationDuration="200ms">
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon class="tab-icon">edit_note</mat-icon>
+        Studio &amp; fil
+      </ng-template>
+
+      <section class="composer" *ngIf="selectedClubId">
+        <div class="composer__shine"></div>
+        <div class="composer__head">
+          <mat-icon>edit_note</mat-icon>
+          <div>
+            <span class="composer__eyebrow">Nouvelle publication</span>
+            <h2>{{ getClubName(selectedClubId) }}</h2>
+          </div>
+        </div>
+        <form [formGroup]="form" (ngSubmit)="publier()" class="composer__form">
+          <div class="ai-studio">
+            <div class="ai-studio__head">
+              <div class="ai-studio__badge">
+                <mat-icon>auto_awesome</mat-icon>
+                <span>Pi·Rédac</span>
+              </div>
+              <div class="ai-studio__copy">
+                <strong>Assistant local (Ollama)</strong>
+                <p>Saisissez une idée ou des mots-clés : le modèle propose un <em>titre</em>, une <em>description</em> structurée et des <em>hashtags</em>. Vous gardez le contrôle avant publication.</p>
+              </div>
+            </div>
+            <mat-form-field appearance="outline" class="ai-studio__input" subscriptSizing="dynamic">
+              <mat-label>Mots-clés, titre ou brouillon</mat-label>
+              <textarea
+                matInput
+                rows="2"
+                maxlength="500"
+                [(ngModel)]="aiKeywords"
+                [ngModelOptions]="{ standalone: true }"
+                placeholder="Ex. atelier CV 12 mars salle B4, inscription obligatoire"></textarea>
+              <mat-hint align="end">{{ aiKeywords.length }}/500</mat-hint>
+            </mat-form-field>
+            <div class="ai-studio__actions">
+              <button
+                mat-stroked-button
+                type="button"
+                class="btn-ai-generate"
+                (click)="suggestWithOllama()"
+                [disabled]="aiLoading || !selectedClubId">
+                <mat-icon>psychology</mat-icon>
+                Générer avec Ollama
+              </button>
+            </div>
+            <mat-progress-bar *ngIf="aiLoading" mode="indeterminate" class="ai-studio__bar"></mat-progress-bar>
+
+            <mat-card class="ai-preview" *ngIf="aiPreview as prev" appearance="outlined">
+              <mat-card-header class="ai-preview__header">
+                <div mat-card-avatar class="ai-preview__avatar">
+                  <mat-icon>stars</mat-icon>
+                </div>
+                <mat-card-title>Proposition</mat-card-title>
+                <mat-card-subtitle>Relisez, modifiez dans le champ ci-dessous si besoin</mat-card-subtitle>
+              </mat-card-header>
+              <mat-card-content>
+                <p class="ai-preview__titre">{{ prev.titre }}</p>
+                <p class="ai-preview__desc">{{ prev.description }}</p>
+                <mat-chip-set class="ai-preview__tags" aria-label="Hashtags suggérés">
+                  <mat-chip *ngFor="let h of prev.hashtags">#{{ h }}</mat-chip>
+                </mat-chip-set>
+              </mat-card-content>
+              <mat-card-actions class="ai-preview__actions">
+                <button mat-flat-button color="primary" type="button" (click)="applyFullSuggestion()">
+                  <mat-icon>vertical_align_top</mat-icon>
+                  Insérer dans le post
+                </button>
+                <button mat-button type="button" (click)="dismissAiPreview()">Masquer</button>
+              </mat-card-actions>
+            </mat-card>
+          </div>
+
+          <mat-form-field appearance="outline" class="composer__textarea" subscriptSizing="dynamic">
+            <mat-label>Contenu du post</mat-label>
+            <textarea matInput rows="5" formControlName="contenu" placeholder="Annonce, rappel, lien utile…"></textarea>
+            <mat-error *ngIf="form.get('contenu')?.hasError('required')">Contenu requis</mat-error>
+            <mat-error *ngIf="form.get('contenu')?.hasError('minlength')">Minimum 5 caractères</mat-error>
+            <mat-error *ngIf="form.get('contenu')?.hasError('maxlength')">Maximum 16&nbsp;000 caractères</mat-error>
+          </mat-form-field>
+
+          <div class="media-zone">
+            <label class="media-zone__label">
+              <mat-icon>perm_media</mat-icon>
+              Médias (optionnel)
+            </label>
+            <label class="file-pill">
+              <input type="file" class="file-pill__input" multiple accept="image/*,video/*" (change)="onMediaSelected($event)">
+              <mat-icon>add_photo_alternate</mat-icon>
+              Ajouter des fichiers
+            </label>
+            <p class="media-zone__hint">Jusqu’à {{ maxMediaCount }} fichiers · images ou vidéos</p>
+            <div class="media-grid" *ngIf="mediaPreviews.length > 0">
+              <div class="media-item" *ngFor="let m of mediaPreviews; let i = index">
+                <img *ngIf="!isVideo(m)" [src]="m" alt="preview">
+                <video *ngIf="isVideo(m)" [src]="m" controls></video>
+                <button mat-mini-fab color="warn" type="button" class="remove-btn" (click)="removeMedia(i)" aria-label="Retirer">
+                  <mat-icon>close</mat-icon>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <button mat-flat-button class="btn-publish" type="submit" [disabled]="form.invalid || !selectedClubId">
+            <mat-icon>rocket_launch</mat-icon>
+            Publier
+          </button>
+        </form>
+      </section>
+
+      <p class="select-club-msg" *ngIf="!selectedClubId && clubs.length">
+        <mat-icon>arrow_upward</mat-icon>
+        Choisissez un club ci-dessus pour rédiger un post ou afficher son fil. « Tous les clubs » sert à la vue engagement dans l’autre onglet.
+      </p>
+
+      <div class="feed-header" *ngIf="selectedClubId && posts.length">
+        <mat-icon>dynamic_feed</mat-icon>
+        <span>Fil du club · {{ posts.length }} publication{{ posts.length > 1 ? 's' : '' }}</span>
+      </div>
+
+      <div class="posts-list" *ngIf="selectedClubId">
+        <article class="post-card" *ngFor="let p of paginatedPosts; let idx = index" [style.animation-delay.ms]="idx * 40">
+          <div class="post-card__accent"></div>
+          <p class="post-content">{{ p.contenu }}</p>
+          <div class="media-grid" *ngIf="getMedias(p).length > 0">
+            <div class="media-item media-item--readonly" *ngFor="let m of getMedias(p)">
+              <img *ngIf="!isVideo(m)" [src]="m" alt="media">
+              <video *ngIf="isVideo(m)" [src]="m" controls></video>
+            </div>
+          </div>
+          <div class="post-footer">
+            <span class="post-date"><mat-icon>schedule</mat-icon>{{ p.datePost }}</span>
+            <button mat-stroked-button class="btn-delete-post" (click)="supprimer(p)">
+              <mat-icon>delete_outline</mat-icon>
+              Supprimer
+            </button>
+          </div>
+        </article>
+      </div>
+
+      <mat-paginator
+        *ngIf="selectedClubId && posts.length > 0"
+        class="posts-paginator"
+        [length]="posts.length"
+        [pageSize]="pageSize"
+        [pageIndex]="pageIndex"
+        [pageSizeOptions]="pageSizeOptions"
+        [showFirstLastButtons]="true"
+        (page)="onPostsPageChange($event)">
+      </mat-paginator>
+    </mat-tab>
+
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon class="tab-icon">forum</mat-icon>
+        Engagement &amp; modération
+      </ng-template>
+
+      <div class="engage-admin">
+        <div class="engage-admin__intro">
+          <mat-icon>shield_person</mat-icon>
+          <div>
+            <h2>Vue consolidée</h2>
+            <p>Réactions par type, commentaires avec auteur, suppression modératrice. Filtrez par club ou consultez l’ensemble.</p>
+          </div>
+        </div>
+
+        <mat-progress-bar *ngIf="adminLoading" mode="indeterminate" class="engage-admin__bar"></mat-progress-bar>
+
+        <p class="engage-admin__empty" *ngIf="!adminLoading && adminRows.length === 0">
+          Aucun post avec engagement pour ce filtre.
+        </p>
+
+        <div class="engage-admin__cards" *ngIf="!adminLoading && adminRows.length > 0">
+          <mat-card class="engage-card" *ngFor="let row of adminRows; let i = index" [style.animation-delay.ms]="i * 50">
+            <mat-card-header class="engage-card__head">
+              <div mat-card-avatar class="engage-card__avatar">
+                <mat-icon>article</mat-icon>
+              </div>
+              <mat-card-title class="engage-card__title">{{ row.clubNom }}</mat-card-title>
+              <mat-card-subtitle>
+                <span class="engage-card__date"><mat-icon class="engage-card__date-icon">schedule</mat-icon> {{ row.datePost }}</span>
+              </mat-card-subtitle>
+            </mat-card-header>
+            <mat-card-content>
+              <p class="engage-card__excerpt">{{ row.contenuApercu }}</p>
+              <div class="engage-card__stats">
+                <span class="stat-pill"><mat-icon>favorite</mat-icon> {{ row.totalReactions }} réaction{{ row.totalReactions > 1 ? 's' : '' }}</span>
+                <span class="stat-pill"><mat-icon>chat_bubble</mat-icon> {{ row.totalComments }} commentaire{{ row.totalComments > 1 ? 's' : '' }}</span>
+              </div>
+              <mat-chip-set class="engage-chips" *ngIf="row.reactionCounts | keyvalue as rc">
+                <mat-chip *ngFor="let kv of rc" [disabled]="!kv.value">
+                  {{ reactionLabel(kv.key) }} · {{ kv.value }}
+                </mat-chip>
+              </mat-chip-set>
+              <div class="engage-comments" *ngIf="row.comments?.length">
+                <h3 class="engage-comments__title"><mat-icon>format_list_bulleted</mat-icon> Commentaires</h3>
+                <ul class="engage-comments__list">
+                  <li *ngFor="let c of row.comments" class="engage-comment">
+                    <div class="engage-comment__body">
+                      <strong>{{ c.auteurNom }}</strong>
+                      <span class="engage-comment__meta">{{ c.dateCreation }}</span>
+                      <p>{{ c.contenu }}</p>
+                    </div>
+                    <button mat-icon-button type="button" color="warn" class="engage-comment__del" (click)="deleteAdminComment(row, c.id)" matTooltip="Supprimer le commentaire" aria-label="Supprimer">
+                      <mat-icon>delete_outline</mat-icon>
+                    </button>
+                  </li>
+                </ul>
+              </div>
+              <p class="engage-comments--none" *ngIf="!row.comments?.length && row.totalComments === 0">Pas encore de commentaires.</p>
+            </mat-card-content>
+          </mat-card>
+        </div>
+
+        <mat-paginator
+          *ngIf="adminTotal > 0"
+          class="engage-admin__paginator"
+          [length]="adminTotal"
+          [pageSize]="adminPageSize"
+          [pageIndex]="adminPageIndex"
+          [pageSizeOptions]="[5, 10, 20, 50]"
+          [showFirstLastButtons]="true"
+          (page)="onAdminPageChange($event)">
+        </mat-paginator>
+      </div>
+    </mat-tab>
+  </mat-tab-group>
+</div>

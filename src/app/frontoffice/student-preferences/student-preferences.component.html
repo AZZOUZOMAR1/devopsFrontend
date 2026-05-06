@@ -1,0 +1,178 @@
+<div class="preferences-container">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <div class="header-icon">
+        <mat-icon>tune</mat-icon>
+      </div>
+      <div>
+        <h1>Mes Préférences</h1>
+        <p class="subtitle">Configurez vos préférences pour un matching personnalisé</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chargement -->
+  <div *ngIf="loading" class="loading">
+    <mat-progress-spinner mode="indeterminate" diameter="48"></mat-progress-spinner>
+    <p>Chargement de vos préférences...</p>
+  </div>
+
+  <div *ngIf="!loading" class="content">
+
+    <!-- Info card -->
+    <div class="info-banner">
+      <mat-icon>info</mat-icon>
+      <p>Ces préférences sont <strong>optionnelles</strong>. Plus vous remplissez, plus le matching sera précis !</p>
+    </div>
+
+    <!-- Formulaire -->
+    <div class="form-grid">
+
+      <!-- Localisation -->
+      <mat-card class="pref-card">
+        <mat-card-header>
+          <div class="card-icon location">
+            <mat-icon>location_on</mat-icon>
+          </div>
+          <mat-card-title>Localisation préférée</mat-card-title>
+          <mat-card-subtitle>Ville ou région où vous souhaitez travailler</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Ville (ex: Tunis, Sfax, Paris...)</mat-label>
+            <mat-icon matPrefix>place</mat-icon>
+            <input matInput
+                   [(ngModel)]="profile.ville"
+                   (input)="onLocationInput($event)"
+                   placeholder="Entrez une ville..."/>
+          </mat-form-field>
+
+          <!-- Suggestions de villes depuis l'API Map -->
+          <div class="location-suggestions"
+               *ngIf="showSuggestions && locationSuggestions.length > 0"
+               (mouseleave)="hideSuggestions()">
+            <div class="suggestion-item"
+                 *ngFor="let s of locationSuggestions"
+                 (click)="selectLocation(s)">
+              {{ s.display_name }}
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Type de contrat -->
+      <mat-card class="pref-card">
+        <mat-card-header>
+          <div class="card-icon contract">
+            <mat-icon>description</mat-icon>
+          </div>
+          <mat-card-title>Type de contrat</mat-card-title>
+          <mat-card-subtitle>Votre type de contrat préféré</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="contract-chips">
+            <button *ngFor="let type of contractTypes"
+                    class="contract-chip-btn"
+                    [class.selected]="profile.typeContrat === type"
+                    [ngStyle]="profile.typeContrat === type ? {
+                      'background': getContractBg(type),
+                      'color': getContractColor(type),
+                      'border-color': getContractColor(type)
+                    } : {}"
+                    (click)="profile.typeContrat = type">
+              {{ type }}
+            </button>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Salaire -->
+      <mat-card class="pref-card">
+        <mat-card-header>
+          <div class="card-icon salary">
+            <mat-icon>payments</mat-icon>
+          </div>
+          <mat-card-title>Salaire attendu</mat-card-title>
+          <mat-card-subtitle>Votre salaire annuel souhaité (TND)</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Salaire annuel (TND)</mat-label>
+            <mat-icon matPrefix>euro</mat-icon>
+            <input matInput
+                   type="number"
+                   [(ngModel)]="profile.salaireSouhaite"
+                   placeholder="ex: 30000"/>
+            <mat-hint>Laissez vide si non important</mat-hint>
+          </mat-form-field>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Compétences -->
+      <mat-card class="pref-card skills-card">
+        <mat-card-header>
+          <div class="card-icon skills">
+            <mat-icon>psychology</mat-icon>
+          </div>
+          <mat-card-title>Compétences</mat-card-title>
+          <mat-card-subtitle>Vos compétences techniques clés</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          <!-- Input ajout skill -->
+          <div class="skill-input-row">
+            <mat-form-field appearance="outline" class="skill-field">
+              <mat-label>Ajouter une compétence</mat-label>
+              <mat-icon matPrefix>add_circle</mat-icon>
+              <input matInput
+                     [(ngModel)]="skillInput"
+                     (keydown)="onSkillKeydown($event)"
+                     placeholder="ex: Java, Angular, Python..."/>
+            </mat-form-field>
+            <button mat-raised-button
+                    class="add-btn"
+                    (click)="addSkill()"
+                    [disabled]="!skillInput.trim()">
+              <mat-icon>add</mat-icon>
+              Ajouter
+            </button>
+          </div>
+
+          <!-- Liste skills -->
+          <div class="skills-list" *ngIf="skillsList.length > 0">
+            <div *ngFor="let skill of skillsList" class="skill-tag">
+              <span>{{ skill }}</span>
+              <button mat-icon-button class="remove-btn" (click)="removeSkill(skill)">
+                <mat-icon>close</mat-icon>
+              </button>
+            </div>
+          </div>
+
+          <!-- État vide -->
+          <div *ngIf="skillsList.length === 0" class="no-skills">
+            <mat-icon>lightbulb</mat-icon>
+            <p>Ajoutez vos compétences pour améliorer le matching</p>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+    </div>
+
+    <!-- Bouton Sauvegarder -->
+    <div class="save-section">
+      <div *ngIf="saved" class="success-msg">
+        <mat-icon>check_circle</mat-icon>
+        Préférences sauvegardées avec succès !
+      </div>
+      <button mat-raised-button
+              class="save-btn"
+              (click)="saveProfile()"
+              [disabled]="saving">
+        <mat-icon>{{ saving ? 'hourglass_empty' : 'save' }}</mat-icon>
+        {{ saving ? 'Sauvegarde...' : 'Sauvegarder mes préférences' }}
+      </button>
+    </div>
+
+  </div>
+</div>

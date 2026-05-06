@@ -1,0 +1,183 @@
+<div class="posts-page">
+  <div class="ambient" aria-hidden="true"></div>
+
+  <header class="hero">
+    <div class="hero__badge">
+      <mat-icon>auto_awesome</mat-icon>
+      <span>Actualités des clubs</span>
+    </div>
+    <h1 class="hero__title">Le mur des <em>clubs</em></h1>
+    <p class="hero__lead">
+      Découvrez les annonces, photos et vidéos publiées par les clubs — ou filtrez pour ne voir qu’un collectif.
+    </p>
+  </header>
+
+  <div class="filter-glass">
+    <mat-icon class="filter-glass__icon">filter_alt</mat-icon>
+    <mat-form-field appearance="outline" class="filter-glass__field" subscriptSizing="dynamic">
+      <mat-label>Filtrer par club</mat-label>
+      <mat-select [(ngModel)]="selectedClubId" (selectionChange)="onClubChange()">
+        <mat-option [value]="null">Tous les clubs</mat-option>
+        <mat-option *ngFor="let c of clubs" [value]="c.id">{{ c.nom }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+  </div>
+
+  <div class="loading-wrap" *ngIf="loading">
+    <mat-progress-bar mode="indeterminate" class="loading-bar"></mat-progress-bar>
+  </div>
+
+  <div class="posts-masonry" *ngIf="!loading">
+    <article class="post-card" *ngFor="let p of paginatedPosts; let i = index" [style.animation-delay.ms]="i * 60">
+      <div class="post-card__glow" aria-hidden="true"></div>
+      <div class="post-card__inner">
+        <header class="post-card__head">
+          <div class="post-card__club">
+            <span class="post-card__club-icon">
+              <mat-icon>groups</mat-icon>
+            </span>
+            <span class="post-card__club-name">{{ getClubNom(p) }}</span>
+          </div>
+          <time class="post-card__date" *ngIf="p.datePost">
+            <mat-icon>schedule</mat-icon>
+            {{ formatPostDate(p.datePost) }}
+          </time>
+        </header>
+
+        <div class="post-card__quote" *ngIf="p.contenu">
+          <span class="post-card__quote-mark" aria-hidden="true">“</span>
+          <p class="post-card__text">{{ p.contenu }}</p>
+        </div>
+
+        <div class="post-card__media" *ngIf="getMedias(p).length > 0" [class.post-card__media--many]="getMedias(p).length > 1">
+          <figure class="media-tile" *ngFor="let m of getMedias(p); let mi = index" [class.media-tile--wide]="getMedias(p).length === 1">
+            <img *ngIf="!isVideo(m)" [src]="m" alt="Média du post" loading="lazy" />
+            <video *ngIf="isVideo(m)" [src]="m" controls playsinline preload="metadata"></video>
+          </figure>
+        </div>
+
+        <footer class="post-card__engage" *ngIf="p.id && getEngagement(p.id) as eng">
+          <div class="engage-glow" aria-hidden="true"></div>
+          <div class="reaction-row">
+            <span class="reaction-row__label">
+              <mat-icon>mood</mat-icon>
+              Réagir
+            </span>
+            <div class="reaction-pills">
+              <button
+                type="button"
+                mat-icon-button
+                class="reaction-pill"
+                *ngFor="let rk of reactionKinds"
+                [class.reaction-pill--on]="eng.myReaction === rk.type"
+                [disabled]="!canInteract(p)"
+                [matTooltip]="rk.label + (canInteract(p) ? '' : ' — ' + interactionHint(p))"
+                (click)="onReact(p, rk.type)">
+                <mat-icon>{{ rk.icon }}</mat-icon>
+              </button>
+            </div>
+          </div>
+          <div class="reaction-summary" *ngIf="eng.reactionCounts && (eng.reactionCounts | keyvalue).length">
+            <mat-chip-set class="summary-chips">
+              <mat-chip *ngFor="let kv of eng.reactionCounts | keyvalue" class="summary-chip">
+                <mat-icon class="summary-chip__ico">{{ chipIconFor($any(kv.key)) }}</mat-icon>
+                {{ reactionLabel($any(kv.key)) }} · {{ kv.value }}
+              </mat-chip>
+            </mat-chip-set>
+          </div>
+          <p class="engage-hint" *ngIf="interactionHint(p)">{{ interactionHint(p) }}</p>
+
+          <button type="button" mat-stroked-button class="comments-toggle" (click)="toggleComments(p)">
+            <mat-icon>{{ commentsOpen(p.id!) ? 'expand_less' : 'chat_bubble_outline' }}</mat-icon>
+            {{ eng.commentCount }} commentaire{{ eng.commentCount > 1 ? 's' : '' }}
+          </button>
+
+          <div class="comments-panel" *ngIf="commentsOpen(p.id!)">
+            <div class="comments-loading" *ngIf="loadingComments.has(p.id!)">
+              <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+            </div>
+            <ul class="comment-list" *ngIf="!loadingComments.has(p.id!)">
+              <li class="comment-item" *ngFor="let c of commentsByPostId.get(p.id!) || []">
+                <div class="comment-item__avatar">{{ (c.auteurNom || '?').charAt(0) }}</div>
+                <div class="comment-item__body">
+                  <div class="comment-item__meta">
+                    <strong>{{ c.auteurNom }}</strong>
+                    <time>{{ formatCommentDate(c.dateCreation) }}</time>
+                  </div>
+                  <div class="comment-item__meta" *ngIf="c.aiSentiment || c.aiCorrectionApplied">
+                    <span class="comment-ai-chip" *ngIf="c.aiSentiment">
+                      <mat-icon>{{ sentimentIcon(c.aiSentiment) }}</mat-icon>
+                      IA: {{ sentimentLabel(c.aiSentiment) }}
+                    </span>
+                    <span class="comment-ai-chip" *ngIf="c.aiCorrectionApplied">
+                      <mat-icon>spellcheck</mat-icon>
+                      Orthographe corrigée
+                    </span>
+                    <span class="comment-ai-chip" *ngIf="c.aiTranslatedToEnglish">
+                      <mat-icon>translate</mat-icon>
+                      Traduit en anglais
+                    </span>
+                  </div>
+                  <p class="comment-item__text">{{ c.contenu }}</p>
+                </div>
+                <button
+                  mat-icon-button
+                  type="button"
+                  class="comment-item__del"
+                  *ngIf="authService.getCurrentUserId() === c.idAuteur"
+                  (click)="deleteMyComment(p.id!, c)"
+                  matTooltip="Supprimer mon commentaire">
+                  <mat-icon>close</mat-icon>
+                </button>
+              </li>
+              <li class="comment-empty" *ngIf="!(commentsByPostId.get(p.id!) || []).length">
+                Aucun commentaire pour l’instant — soyez le premier à réagir.
+              </li>
+            </ul>
+            <div class="comment-composer" *ngIf="canInteract(p)">
+              <label class="comment-option">
+                <input
+                  type="checkbox"
+                  [ngModel]="commentTranslateToEnglish[p.id!]"
+                  (ngModelChange)="commentTranslateToEnglish[p.id!] = $event" />
+                Convertir en anglais (optionnel)
+              </label>
+              <mat-form-field appearance="outline" class="comment-field" subscriptSizing="dynamic">
+                <mat-label>Votre commentaire</mat-label>
+                <textarea
+                  matInput
+                  rows="2"
+                  maxlength="2000"
+                  [ngModel]="commentDraft[p.id!]"
+                  (ngModelChange)="commentDraft[p.id!] = $event"
+                  placeholder="Partagez une idée, une question…"></textarea>
+                <mat-hint align="end">{{ (commentDraft[p.id!] || '').length }}/2000</mat-hint>
+              </mat-form-field>
+              <button mat-flat-button color="primary" type="button" class="comment-send" (click)="submitComment(p)">
+                <mat-icon>send</mat-icon>
+                Publier
+              </button>
+            </div>
+          </div>
+        </footer>
+      </div>
+    </article>
+
+    <div class="posts-empty" *ngIf="posts.length === 0">
+      <mat-icon>post_add</mat-icon>
+      <h2>Rien pour l’instant</h2>
+      <p>Revenez bientôt ou choisissez un autre club.</p>
+    </div>
+  </div>
+
+  <mat-paginator
+    *ngIf="!loading && posts.length > 0"
+    class="posts-paginator"
+    [length]="posts.length"
+    [pageSize]="pageSize"
+    [pageIndex]="pageIndex"
+    [pageSizeOptions]="pageSizeOptions"
+    [showFirstLastButtons]="true"
+    (page)="onPostsPageChange($event)">
+  </mat-paginator>
+</div>

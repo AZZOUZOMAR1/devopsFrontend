@@ -1,0 +1,162 @@
+<div class="fb-page">
+  <div class="fb-bg" aria-hidden="true"></div>
+
+  <header class="fb-hero">
+    <div class="fb-hero__badge">
+      <mat-icon>insights</mat-icon>
+      <span>Tableau de bord</span>
+    </div>
+    <h1 class="fb-hero__title">Avis & <em>feedbacks</em></h1>
+    <p class="fb-hero__lead">Analysez la satisfaction sur les événements et les clubs en un coup d’œil.</p>
+    <p class="fb-hero__hint">
+      <mat-icon>psychology</mat-icon>
+      Analyse de sentiment automatique (mots-clés + note) : les avis négatifs déclenchent une <strong>alerte e-mail admin</strong>.
+    </p>
+  </header>
+
+  <mat-progress-bar *ngIf="loading" mode="indeterminate" class="fb-progress"></mat-progress-bar>
+
+  <div class="fb-content" *ngIf="!loading">
+    <div class="fb-tabs" role="tablist">
+      <button type="button" role="tab" class="fb-tab" [class.fb-tab--active]="activeTab === 'clubs'" (click)="setTab('clubs')">
+        <mat-icon>groups</mat-icon>
+        Clubs
+      </button>
+      <button type="button" role="tab" class="fb-tab" [class.fb-tab--active]="activeTab === 'events'" (click)="setTab('events')">
+        <mat-icon>event</mat-icon>
+        Événements
+      </button>
+    </div>
+
+    <!-- ========== ONGLET ÉVÉNEMENTS ========== -->
+    <ng-container *ngIf="activeTab === 'events'">
+      <section class="fb-section">
+        <h2 class="fb-section__title">
+          <mat-icon>star_rate</mat-icon>
+          Moyennes par événement
+        </h2>
+        <div class="moyennes-grid">
+          <div class="moyenne-card" *ngFor="let m of getMoyenneParEvenement()">
+            <div class="moyenne-card__glow"></div>
+            <span class="titre">{{ m.titre }}</span>
+            <span class="moyenne">{{ m.moyenne.toFixed(1) }} <mat-icon class="inline-star">star</mat-icon></span>
+            <span class="count">{{ m.count }} avis</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="fb-section">
+        <h2 class="fb-section__title">
+          <mat-icon>comment</mat-icon>
+          Tous les avis — événements
+        </h2>
+        <div class="feedbacks-list">
+          <div class="feedback-card" *ngFor="let f of feedbacks">
+            <div class="feedback-card__bar"></div>
+            <div class="feedback-header">
+              <span class="evenement">{{ getEvenementTitre(f.evenementId) }}</span>
+              <div class="feedback-header__right">
+                <span class="sentiment-chip" *ngIf="f.sentiment" [ngClass]="getSentimentClass(f.sentiment)">{{ getSentimentLabel(f.sentiment) }}</span>
+                <span class="note">
+                  <mat-icon *ngFor="let _ of getStars(f.note)" class="star">star</mat-icon>
+                </span>
+              </div>
+            </div>
+            <div class="feedback-body">
+              <span class="auteur">{{ f.nomEtudiant || 'Anonyme' }}</span>
+              <p class="commentaire" *ngIf="f.commentaire">{{ f.commentaire }}</p>
+            </div>
+          </div>
+        </div>
+        <p *ngIf="feedbacks.length === 0" class="fb-empty">Aucun avis événement pour le moment.</p>
+      </section>
+    </ng-container>
+
+    <!-- ========== ONGLET CLUBS ========== -->
+    <div *ngIf="activeTab === 'clubs'" class="clubs-section">
+      <div class="kpis">
+        <div class="kpi-card kpi-card--1">
+          <mat-icon>reviews</mat-icon>
+          <span class="label">Total avis clubs</span>
+          <strong>{{ clubStats?.totalFeedbacks || 0 }}</strong>
+        </div>
+        <div class="kpi-card kpi-card--2">
+          <mat-icon>trending_up</mat-icon>
+          <span class="label">Moyenne globale</span>
+          <strong>{{ (clubStats?.moyenneGlobale || 0).toFixed(1) }}<small>/5</small></strong>
+        </div>
+        <div class="kpi-card kpi-card--3">
+          <mat-icon>emoji_events</mat-icon>
+          <span class="label">Clubs évalués</span>
+          <strong>{{ clubStats?.topClubs?.length || 0 }}</strong>
+        </div>
+      </div>
+
+      <div class="analytics-grid">
+        <div class="fb-panel">
+          <h3><mat-icon>bar_chart</mat-icon> Distribution des notes</h3>
+          <div class="bar-list" *ngIf="clubStats?.distributionNotes?.length">
+            <div class="bar-row" *ngFor="let d of clubStats?.distributionNotes">
+              <span class="bar-label">{{ d.note }}★</span>
+              <div class="bar-wrap">
+                <div class="bar" [style.width.%]="(d.count / getMaxDistribution()) * 100"></div>
+              </div>
+              <strong class="bar-count">{{ d.count }}</strong>
+            </div>
+          </div>
+          <p *ngIf="!clubStats?.distributionNotes?.length" class="fb-empty fb-empty--inline">Pas encore de données.</p>
+        </div>
+
+        <div class="fb-panel">
+          <h3><mat-icon>leaderboard</mat-icon> Top clubs (moyenne)</h3>
+          <div class="top-list" *ngIf="clubStats?.topClubs?.length; else noTop">
+            <div class="top-item" *ngFor="let c of clubStats?.topClubs; let i = index">
+              <span class="top-rank">{{ i + 1 }}</span>
+              <span class="top-name">{{ c.nomClub }}</span>
+              <span class="top-score">{{ c.moyenne.toFixed(1) }}/5 · {{ c.totalAvis }} avis</span>
+            </div>
+          </div>
+          <ng-template #noTop><p class="fb-empty fb-empty--inline">Aucune donnée.</p></ng-template>
+        </div>
+      </div>
+
+      <div class="fb-panel fb-panel--wide">
+        <h3><mat-icon>show_chart</mat-icon> Tendance mensuelle</h3>
+        <div class="trend" *ngIf="clubStats?.tendanceMensuelle?.length; else noTrend">
+          <div class="trend-item" *ngFor="let t of clubStats?.tendanceMensuelle">
+            <span class="trend-mois">{{ t.mois }}</span>
+            <span class="trend-avis">{{ t.totalAvis }} avis</span>
+            <span class="trend-moy">{{ t.moyenne.toFixed(1) }}/5</span>
+          </div>
+        </div>
+        <ng-template #noTrend><p class="fb-empty fb-empty--inline">Pas encore de tendance.</p></ng-template>
+      </div>
+
+      <section class="fb-section">
+        <h2 class="fb-section__title">
+          <mat-icon>forum</mat-icon>
+          Derniers avis clubs
+        </h2>
+        <div class="feedbacks-list">
+          <div class="feedback-card feedback-card--club" *ngFor="let f of clubFeedbacks">
+            <div class="feedback-card__bar feedback-card__bar--club"></div>
+            <div class="feedback-header">
+              <span class="evenement">{{ f.nomClub }}</span>
+              <div class="feedback-header__right">
+                <span class="sentiment-chip" *ngIf="f.sentiment" [ngClass]="getSentimentClass(f.sentiment)">{{ getSentimentLabel(f.sentiment) }}</span>
+                <span class="note">
+                  <mat-icon *ngFor="let _ of getStars(f.note)" class="star">star</mat-icon>
+                </span>
+              </div>
+            </div>
+            <div class="feedback-body">
+              <span class="auteur">{{ f.prenomEtudiant }} {{ f.nomEtudiant }}</span>
+              <p class="commentaire" *ngIf="f.commentaire">{{ f.commentaire }}</p>
+            </div>
+          </div>
+        </div>
+        <p *ngIf="clubFeedbacks.length === 0" class="fb-empty">Aucun avis club pour le moment.</p>
+      </section>
+    </div>
+  </div>
+</div>

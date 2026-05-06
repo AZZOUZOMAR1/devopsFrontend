@@ -1,0 +1,68 @@
+<div class="bo-page">
+  <div class="bo-bg" aria-hidden="true"></div>
+
+  <header class="bo-hero">
+    <div class="bo-hero__badge">
+      <mat-icon>groups</mat-icon>
+      <span>Annuaire</span>
+    </div>
+    <h1 class="bo-hero__title">Membres des <em>clubs</em></h1>
+    <p class="bo-hero__lead">Consultez les inscrits, bloquez ou retirez un membre si nécessaire.</p>
+  </header>
+
+  <div class="bo-toolbar">
+    <mat-icon class="bo-toolbar__icon">hub</mat-icon>
+    <mat-form-field appearance="outline" class="bo-filter" subscriptSizing="dynamic">
+      <mat-label>Sélectionner un club</mat-label>
+      <mat-select [(ngModel)]="selectedClubId" (selectionChange)="onClubChange()">
+        <mat-option *ngFor="let c of clubs" [value]="c.id">{{ c.nom }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+    <div class="bo-toolbar__meta" *ngIf="selectedClubId && !loading">
+      <span class="bo-count">{{ membres.length }}</span>
+      <span class="bo-count-label">membre{{ membres.length > 1 ? 's' : '' }}</span>
+    </div>
+  </div>
+
+  <mat-progress-bar *ngIf="loading" mode="indeterminate" class="bo-progress"></mat-progress-bar>
+
+  <div class="members-hint" *ngIf="!loading && !selectedClubId && clubs.length">
+    <mat-icon>touch_app</mat-icon>
+    <span>Choisissez un club ci-dessus pour afficher la liste des membres.</span>
+  </div>
+
+  <div class="members-grid" *ngIf="!loading && selectedClubId">
+    <article class="member-card" *ngFor="let m of membres">
+      <div class="member-card__shine"></div>
+      <div class="member-card__main">
+        <div class="member-avatar">
+          {{ (m.prenomEtudiant || '?')[0] }}{{ (m.nomEtudiant || '?')[0] }}
+        </div>
+        <div class="member-info">
+          <h3 class="member-name">{{ m.prenomEtudiant }} {{ m.nomEtudiant }}</h3>
+          <p class="member-email">{{ m.emailEtudiant }}</p>
+          <div class="member-chip">
+            <mat-icon>apartment</mat-icon>
+            <span>{{ m.departementAssigne || 'Département non assigné' }}</span>
+          </div>
+        </div>
+      </div>
+      <div class="member-card__actions">
+        <button mat-stroked-button class="btn-block" (click)="bloquer(m)">
+          <mat-icon>block</mat-icon>
+          Bloquer
+        </button>
+        <button mat-flat-button class="btn-remove" (click)="supprimer(m)">
+          <mat-icon>person_remove</mat-icon>
+          Retirer
+        </button>
+      </div>
+    </article>
+  </div>
+
+  <div class="bo-empty" *ngIf="!loading && selectedClubId && membres.length === 0">
+    <div class="bo-empty__icon"><mat-icon>person_off</mat-icon></div>
+    <h3>Aucun membre</h3>
+    <p>Le club « {{ getClubName(selectedClubId) }} » n’a pas encore de membres actifs.</p>
+  </div>
+</div>

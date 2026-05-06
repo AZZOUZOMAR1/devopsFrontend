@@ -1,0 +1,173 @@
+<div class="reclamations-container">
+  <div class="header">
+    <h1 class="title-with-icon"><mat-icon>campaign</mat-icon>My Reclamations</h1>
+    <p>Submit your reclamation and track its status.</p>
+  </div>
+
+  <div class="alert error" *ngIf="errorMessage && !isStudentBlocked">{{ errorMessage }}</div>
+  <div class="alert success" *ngIf="successMessage">{{ successMessage }}</div>
+
+  <div class="block-notice" *ngIf="isStudentBlocked" role="status" aria-live="polite">
+    <div class="block-notice__accent"></div>
+    <div class="block-notice__icon-wrap">
+      <mat-icon class="block-notice__icon">gavel</mat-icon>
+    </div>
+    <div class="block-notice__body">
+      <h2 class="block-notice__title">Reclamation access temporarily restricted</h2>
+      <p class="block-notice__text">{{ blockMainText }}</p>
+      <div class="block-notice__until" *ngIf="blockedUntilDisplay">
+        <mat-icon>schedule</mat-icon>
+        <div class="block-notice__until-text">
+          <span class="block-notice__until-label">You can submit again after</span>
+          <span class="block-notice__until-date">{{ blockedUntilDisplay }}</span>
+        </div>
+      </div>
+      <p class="block-notice__hint">
+        <mat-icon>support_agent</mat-icon>
+        If you believe this is a mistake, contact the administration.
+      </p>
+    </div>
+  </div>
+
+  <div class="card form-card" [class.form-card--blocked]="isStudentBlocked">
+    <h2 class="section-title"><mat-icon>post_add</mat-icon>New Reclamation</h2>
+    <p class="form-blocked-overlay-msg" *ngIf="isStudentBlocked">
+      <mat-icon>lock</mat-icon>
+      Submission is disabled until the restriction ends.
+    </p>
+    <div class="quick-prompts">
+      <button type="button" class="chip-btn" (click)="useQuickPrompt('access')" [disabled]="isStudentBlocked">
+        <mat-icon>vpn_key</mat-icon> Access issue
+      </button>
+      <button type="button" class="chip-btn" (click)="useQuickPrompt('payment')" [disabled]="isStudentBlocked">
+        <mat-icon>payments</mat-icon> Payment issue
+      </button>
+      <button type="button" class="chip-btn" (click)="useQuickPrompt('bug')" [disabled]="isStudentBlocked">
+        <mat-icon>bug_report</mat-icon> Platform bug
+      </button>
+      <button type="button" class="chip-btn" (click)="useQuickPrompt('other')" [disabled]="isStudentBlocked">
+        <mat-icon>help</mat-icon> Other
+      </button>
+    </div>
+    <p class="voice-hint" *ngIf="speechSupported">
+      <mat-icon>keyboard_voice</mat-icon>
+      You can dictate Subject or Description using voice.
+    </p>
+
+    <div class="form-group">
+      <div class="label-row">
+        <label for="sujet">Subject</label>
+        <button type="button" class="voice-btn" (click)="toggleVoiceInput('sujet')" [disabled]="isStudentBlocked">
+          <mat-icon>{{ isRecording && recordingField === 'sujet' ? 'mic_off' : 'mic' }}</mat-icon>
+          {{ isRecording && recordingField === 'sujet' ? 'Stop' : 'Voice' }}
+        </button>
+      </div>
+      <input id="sujet" type="text" [(ngModel)]="formModel.sujet" placeholder="Reclamation subject" [disabled]="isStudentBlocked" />
+    </div>
+
+    <div class="form-group">
+      <div class="label-row">
+        <label for="description">Description</label>
+        <button type="button" class="voice-btn" (click)="toggleVoiceInput('description')" [disabled]="isStudentBlocked">
+          <mat-icon>{{ isRecording && recordingField === 'description' ? 'mic_off' : 'mic' }}</mat-icon>
+          {{ isRecording && recordingField === 'description' ? 'Stop' : 'Voice' }}
+        </button>
+      </div>
+      <textarea id="description" rows="4" [(ngModel)]="formModel.description" placeholder="Describe your issue" [disabled]="isStudentBlocked"></textarea>
+    </div>
+
+    <div class="actions">
+      <button type="button" class="btn primary btn-with-icon" (click)="submit()" [disabled]="isStudentBlocked">
+        <mat-icon>send</mat-icon>
+        Submit
+      </button>
+      <button type="button" class="btn secondary btn-with-icon" (click)="resetForm()">
+        <mat-icon>ink_eraser</mat-icon>
+        Clear
+      </button>
+    </div>
+  </div>
+
+  <div class="card list-card">
+    <div class="list-head">
+      <h2 class="section-title"><mat-icon>monitoring</mat-icon>My Reclamation Status</h2>
+      <button
+        type="button"
+        class="btn secondary btn-with-icon"
+        (click)="refreshList()"
+        [disabled]="loading"
+        title="Reload your reclamations from the server"
+      >
+        <mat-icon>refresh</mat-icon>
+        Refresh
+      </button>
+    </div>
+    <div class="alert error" *ngIf="listLoadError" role="alert">{{ listLoadError }}</div>
+
+    <div class="loading" *ngIf="loading">Loading...</div>
+
+    <table *ngIf="!loading && reclamations.length > 0">
+      <thead>
+        <tr>
+          <th>Subject</th>
+          <th>Category</th>
+          <th>Status</th>
+          <th>Admin Response</th>
+          <th>Date</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let r of reclamations">
+          <td>{{ r.sujet }}</td>
+          <td>
+            <span class="ml-category-pill" *ngIf="r.categorieMl">{{ r.categorieMl }}</span>
+            <span *ngIf="!r.categorieMl" class="ml-category-dash">—</span>
+          </td>
+          <td>
+            <span class="status" [ngClass]="getStatusClass(r.statut)">
+              {{ getStatusLabel(r.statut) }}
+            </span>
+          </td>
+          <td>{{ r.reponseAdmin || '-' }}</td>
+          <td>{{ formatCreatedAt(r) }}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="empty" *ngIf="!loading && reclamations.length === 0">
+      No reclamations yet.
+    </div>
+  </div>
+
+  <button type="button" class="chatbot-fab" (click)="toggleChatbot()">
+    <mat-icon>{{ showChatbot ? 'close' : 'smart_toy' }}</mat-icon>
+  </button>
+
+  <div class="chatbot-panel" *ngIf="showChatbot">
+    <div class="chatbot-header">
+      <mat-icon>smart_toy</mat-icon>
+      <span>Reclamation Assistant</span>
+    </div>
+    <div class="chatbot-body">
+      <div *ngFor="let m of chatbotMessages" class="chat-msg" [ngClass]="m.role">
+        {{ m.text }}
+      </div>
+      <div class="chatbot-typing" *ngIf="isChatbotLoading">
+        <span></span><span></span><span></span>
+      </div>
+    </div>
+    <div class="chatbot-input">
+      <input
+        type="text"
+        [(ngModel)]="chatbotInput"
+        placeholder="Describe your issue..."
+        (keydown.enter)="sendChatbotMessage()"
+        [disabled]="isChatbotLoading"
+      />
+      <button type="button" class="send-btn" (click)="sendChatbotMessage()" [disabled]="isChatbotLoading">
+        <mat-icon>send</mat-icon>
+      </button>
+    </div>
+  </div>
+
+</div>

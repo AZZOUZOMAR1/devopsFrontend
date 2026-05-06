@@ -1,0 +1,14 @@
+<div class="qr-dialog">
+  <h2 mat-dialog-title>Votre invitation</h2>
+  <mat-dialog-content>
+    <p class="event-title">{{ data.titreEvenement }}</p>
+    <p class="hint">Scannez le QR code pour afficher votre invitation personnalisée</p>
+    <div class="qr-wrapper" *ngIf="qrDataUrl">
+      <img [src]="qrDataUrl" alt="QR Code invitation" class="qr-image" />
+    </div>
+    <p class="url-text">{{ invitationUrl }}</p>
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button mat-raised-button color="primary" (click)="close()">Fermer</button>
+  </mat-dialog-actions>
+</div>

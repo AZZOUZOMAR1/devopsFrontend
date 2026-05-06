@@ -1,0 +1,143 @@
+<div class="events-page">
+  <div class="events-bg" aria-hidden="true"></div>
+
+  <header class="events-hero">
+    <div class="events-hero__badge">
+      <mat-icon>event_available</mat-icon>
+      <span>Agenda</span>
+    </div>
+    <h1 class="events-hero__title">Découvrez les <em>événements</em></h1>
+    <p class="events-hero__lead">Inscrivez-vous, partagez vos avis et vivez l’expérience campus au même rythme que les clubs.</p>
+  </header>
+
+  <div class="loading-container" *ngIf="loading">
+    <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+  </div>
+
+  <div class="events-toolbar" *ngIf="!loading">
+    <div class="search-container">
+      <mat-icon class="search-icon">search</mat-icon>
+      <input
+        type="text"
+        placeholder="Titre, lieu, type ou club organisateur…"
+        class="search-input"
+        [(ngModel)]="searchTerm"
+        (input)="onSearch()">
+    </div>
+    <div class="filter-controls">
+      <mat-form-field appearance="outline" class="filter-field">
+        <mat-label>Type</mat-label>
+        <mat-select [(ngModel)]="selectedType" (selectionChange)="onTypeChange()">
+          <mat-option value="all">Tous les types</mat-option>
+          <mat-option *ngFor="let type of getUniqueTypes()" [value]="type">{{ type }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="filter-field">
+        <mat-label>Statut</mat-label>
+        <mat-select [(ngModel)]="selectedStatus" (selectionChange)="onStatusChange()">
+          <mat-option value="all">Tous les statuts</mat-option>
+          <mat-option value="PLANNED">Planifié</mat-option>
+          <mat-option value="ACTIVE">Actif</mat-option>
+          <mat-option value="COMPLETED">Terminé</mat-option>
+          <mat-option value="CANCELLED">Annulé</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+  </div>
+
+  <div class="events-grid" *ngIf="!loading">
+    <article class="event-card" *ngFor="let evenement of paginatedEvenements; let i = index" [style.animation-delay.ms]="i * 45">
+      <div class="event-card__shine"></div>
+      <div class="event-card__media">
+        <img *ngIf="evenement.image" [src]="evenement.image" [alt]="evenement.titre">
+        <div class="event-card__media-fallback" *ngIf="!evenement.image">
+          <mat-icon>celebration</mat-icon>
+        </div>
+        <span [class]="'event-card__status ' + getStatusClass(evenement.status)">{{ getStatusLabel(evenement.status) }}</span>
+      </div>
+      <div class="event-card__body">
+        <h3 class="event-card__title">{{ evenement.titre }}</h3>
+
+        <div class="event-organizer-chip" *ngIf="evenement.nomClubOrganisateur" matTooltip="Événement organisé par ce club">
+          <mat-icon>groups</mat-icon>
+          <span>Par {{ evenement.nomClubOrganisateur }}</span>
+        </div>
+
+        <p class="event-card__desc" *ngIf="evenement.description">{{ evenement.description }}</p>
+
+        <div class="event-avis-row" *ngIf="getMoyenneDisplay(evenement)">
+          <div class="avis-summary">
+            <mat-icon class="avis-star">star</mat-icon>
+            <span class="avis-moyenne">{{ getMoyenneDisplay(evenement) }}</span>
+          </div>
+          <button mat-stroked-button type="button" class="avis-detail-btn" (click)="openAvisDialog(evenement)">
+            <mat-icon>visibility</mat-icon>
+            Voir les avis
+          </button>
+        </div>
+
+        <div class="event-meta">
+          <div class="meta-chip" *ngIf="evenement.date">
+            <mat-icon>event</mat-icon>
+            <span>{{ formatDate(evenement.date) }}</span>
+          </div>
+          <div class="meta-chip" *ngIf="evenement.heure">
+            <mat-icon>schedule</mat-icon>
+            <span>{{ formatTime(evenement.heure) }}</span>
+          </div>
+          <div class="meta-chip" *ngIf="evenement.lieu">
+            <mat-icon>location_on</mat-icon>
+            <span>{{ evenement.lieu }}</span>
+          </div>
+          <div class="meta-chip" *ngIf="evenement.type">
+            <mat-icon>category</mat-icon>
+            <span>{{ evenement.type }}</span>
+          </div>
+          <div class="meta-chip meta-chip--places" *ngIf="evenement.capacite || getPlacesText(evenement)">
+            <mat-icon>people</mat-icon>
+            <span>{{ getPlacesText(evenement) }}</span>
+          </div>
+        </div>
+
+        <div class="event-actions">
+          <div class="event-buttons">
+            <button
+              mat-raised-button
+              [class.register-btn]="!isInscrit(evenement) && !isEnListeAttente(evenement)"
+              [class.cancel-btn]="isInscrit(evenement) || isEnListeAttente(evenement)"
+              [disabled]="!canRegister(evenement) || currentUserId == null"
+              (click)="inscrireEvenement(evenement)">
+              <mat-icon>{{ isInscrit(evenement) || isEnListeAttente(evenement) ? 'cancel' : 'how_to_reg' }}</mat-icon>
+              <span>{{ getButtonLabel(evenement) }}</span>
+            </button>
+            <button
+              mat-stroked-button
+              *ngIf="canGiveFeedback(evenement)"
+              (click)="openFeedbackDialog(evenement)"
+              class="feedback-btn">
+              <mat-icon>star</mat-icon>
+              <span>{{ getStats(evenement)?.hasFeedback ? 'Modifier mon avis' : 'Donner mon avis' }}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </article>
+  </div>
+
+  <mat-paginator
+    *ngIf="!loading && filteredEvenements.length > 0"
+    class="events-paginator"
+    [length]="filteredEvenements.length"
+    [pageSize]="pageSize"
+    [pageSizeOptions]="pageSizeOptions"
+    [pageIndex]="pageIndex"
+    [showFirstLastButtons]="true"
+    (page)="onPageChange($event)">
+  </mat-paginator>
+
+  <div class="empty-state" *ngIf="!loading && filteredEvenements.length === 0">
+    <mat-icon>event_busy</mat-icon>
+    <h3>Aucun événement trouvé</h3>
+    <p>Affinez votre recherche ou les filtres</p>
+  </div>
+</div>

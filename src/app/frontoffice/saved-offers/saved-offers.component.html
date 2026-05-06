@@ -1,0 +1,137 @@
+<p>saved-offers works!</p>
+<div class="saved-container">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <div class="header-icon">
+        <mat-icon>bookmark</mat-icon>
+      </div>
+      <div>
+        <h1>Mes offres sauvegardées</h1>
+        <p class="subtitle">{{ filteredSavedOffers.length }} offre(s) sauvegardée(s)</p>
+      </div>
+    </div>
+    <button mat-raised-button color="primary" (click)="router.navigate(['/frontoffice/job-offers'])">
+      <mat-icon>work</mat-icon>
+      Voir toutes les offres
+    </button>
+  </div>
+
+  <!-- Filtres -->
+  <mat-card class="filters-card">
+    <mat-card-content>
+      <div class="filters-row">
+        <mat-form-field appearance="outline" class="search-field">
+          <mat-label>Rechercher</mat-label>
+          <mat-icon matPrefix>search</mat-icon>
+          <input matInput [(ngModel)]="searchTerm" placeholder="Titre, entreprise, lieu..." />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="filter-field">
+          <mat-label>Type de contrat</mat-label>
+          <mat-select [(ngModel)]="selectedContractType">
+            <mat-option *ngFor="let type of contractTypes" [value]="type">
+              {{ type === 'ALL' ? 'Tous les contrats' : type }}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Chargement -->
+  <div *ngIf="loading" class="loading">
+    <mat-progress-spinner mode="indeterminate" diameter="48"></mat-progress-spinner>
+    <p>Chargement...</p>
+  </div>
+
+  <!-- Liste des offres sauvegardées -->
+  <div *ngIf="!loading && filteredSavedOffers.length > 0" class="saved-grid">
+    <div *ngFor="let saved of paginatedSavedOffers" class="saved-card">
+
+      <ng-container *ngIf="getJobOffer(saved.jobOfferId) as offer">
+
+        <!-- Badge contrat -->
+        <div class="card-top">
+          <span class="contract-chip" [ngClass]="getContractColor(offer.contractType)">
+            {{ offer.contractType }}
+          </span>
+          <span class="saved-date">
+            <mat-icon>schedule</mat-icon>
+            Sauvegardé le {{ formatDate(saved.savedAt!) }}
+          </span>
+        </div>
+
+        <!-- Contenu principal -->
+        <div class="card-body" (click)="viewDetails(offer.id!)">
+          <div class="company-avatar">
+            <mat-icon>business</mat-icon>
+          </div>
+          <div class="card-info">
+            <h3 class="offer-title">{{ offer.title }}</h3>
+            <p class="company-name">{{ offer.company }}</p>
+
+            <div class="offer-meta">
+              <span class="meta-item">
+                <mat-icon>location_on</mat-icon>
+                {{ offer.location }}
+              </span>
+              <span class="meta-item" *ngIf="offer.salary">
+                <mat-icon>euro</mat-icon>
+                {{ offer.salary | number }} €/an
+              </span>
+              <span class="meta-item deadline" *ngIf="offer.deadline">
+                <mat-icon>event</mat-icon>
+                Limite: {{ offer.deadline | date:'dd/MM/yyyy' }}
+              </span>
+            </div>
+
+            <p class="offer-desc">{{ offer.description }}</p>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="card-actions">
+          <button mat-raised-button color="primary" (click)="apply(offer.id!)">
+            <mat-icon>send</mat-icon>
+            Postuler
+          </button>
+          <button mat-stroked-button (click)="viewDetails(offer.id!)">
+            <mat-icon>visibility</mat-icon>
+            Voir l'offre
+          </button>
+          <button mat-icon-button color="warn" (click)="unsave(saved)" matTooltip="Retirer des favoris">
+            <mat-icon>bookmark_remove</mat-icon>
+          </button>
+        </div>
+
+      </ng-container>
+
+    </div>
+  </div>
+
+  <!-- Pagination -->
+  <app-pagination
+    *ngIf="!loading && filteredSavedOffers.length > 0"
+    [totalItems]="filteredSavedOffers.length"
+    [pageSize]="pageSize"
+    [currentPage]="currentPage"
+    (pageChange)="onPageChange($event)"
+    (pageSizeChange)="onPageSizeChange($event)">
+  </app-pagination>
+
+  <!-- État vide -->
+  <div *ngIf="!loading && filteredSavedOffers.length === 0" class="empty-state">
+    <div class="empty-icon-wrapper">
+      <mat-icon>bookmark_border</mat-icon>
+    </div>
+    <h3>Aucune offre sauvegardée</h3>
+    <p>Explorez les offres disponibles et sauvegardez celles qui vous intéressent !</p>
+    <button mat-raised-button color="primary" routerLink="/frontoffice/job-offers">
+      <mat-icon>work</mat-icon>
+      Explorer les offres
+    </button>
+  </div>
+
+</div>

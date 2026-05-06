@@ -1,0 +1,56 @@
+<div class="feedback-dialog">
+  <h2 mat-dialog-title>
+    <mat-icon>star</mat-icon>
+    {{ viewOnly ? 'Avis sur ' + data.evenement.titre : 'Donner votre avis' }}
+  </h2>
+
+  <mat-dialog-content>
+    <ng-container *ngIf="viewOnly">
+      <div class="moyenne-display" *ngIf="moyenne != null">
+        <span class="stars">{{ moyenne.toFixed(1) }}</span>
+        <mat-icon class="star-icon">star</mat-icon>
+        <span class="count">({{ nombreAvis }} avis)</span>
+      </div>
+      <div class="feedbacks-list" *ngIf="feedbacks.length > 0">
+        <div class="feedback-item" *ngFor="let f of feedbacks">
+          <div class="feedback-header">
+            <span class="nom">{{ f.nomEtudiant || 'Anonyme' }}</span>
+            <span class="note">
+              <mat-icon *ngFor="let _ of getStars(f.note)" class="star-small">star</mat-icon>
+            </span>
+          </div>
+          <p class="commentaire" *ngIf="f.commentaire">{{ f.commentaire }}</p>
+        </div>
+      </div>
+      <p *ngIf="!loadingAvis && feedbacks.length === 0" class="no-avis">Aucun avis pour le moment.</p>
+      <mat-progress-bar *ngIf="loadingAvis" mode="indeterminate"></mat-progress-bar>
+    </ng-container>
+
+    <ng-container *ngIf="!viewOnly">
+      <p class="instruction">Notez cet événement de 1 à 5 étoiles :</p>
+      <div class="stars-input">
+        <mat-icon
+          *ngFor="let i of [1,2,3,4,5]"
+          (click)="setNote(i)"
+          (mouseenter)="hoverNote = i"
+          (mouseleave)="hoverNote = 0"
+          [class.filled]="i <= (hoverNote || note)"
+          [class.empty]="i > (hoverNote || note)">
+          star
+        </mat-icon>
+      </div>
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Commentaire (optionnel)</mat-label>
+        <textarea matInput [(ngModel)]="commentaire" rows="3" placeholder="Partagez votre expérience..."></textarea>
+      </mat-form-field>
+    </ng-container>
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end">
+    <button mat-button (click)="close()">{{ viewOnly ? 'Fermer' : 'Annuler' }}</button>
+    <button mat-raised-button color="primary" *ngIf="!viewOnly" (click)="submit()" [disabled]="loading || note < 1">
+      <mat-icon>send</mat-icon>
+      Envoyer
+    </button>
+  </mat-dialog-actions>
+</div>

@@ -1,0 +1,226 @@
+.cad-wrap {
+  display: block;
+  min-width: min(100vw - 32px, 480px);
+  max-width: 520px;
+  overflow: hidden;
+  border-radius: 20px;
+  background: linear-gradient(165deg, #1e293b 0%, #0f172a 100%);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+}
+
+.cad-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 16px 16px 20px;
+  background: linear-gradient(120deg, rgba(99, 102, 241, 0.2), rgba(236, 72, 153, 0.12));
+  border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+  position: relative;
+}
+
+.cad-header__icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #6366f1, #ec4899);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.cad-header__icon mat-icon {
+  color: white;
+  font-size: 26px;
+  width: 26px;
+  height: 26px;
+  transform: scaleX(-1);
+}
+
+.cad-header__text {
+  flex: 1;
+  min-width: 0;
+}
+
+.cad-header__eyebrow {
+  display: block;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #a5b4fc;
+  margin-bottom: 4px;
+}
+
+.cad-header__title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #f8fafc;
+  line-height: 1.25;
+  word-break: break-word;
+}
+
+.cad-close {
+  position: absolute;
+  top: 8px;
+  right: 4px;
+  color: #94a3b8 !important;
+}
+
+.cad-body {
+  max-height: min(60vh, 420px);
+  margin: 0;
+  padding: 16px 18px 8px !important;
+  background: #0f172a;
+}
+
+.cad-state {
+  text-align: center;
+  padding: 20px 12px;
+  color: #94a3b8;
+  font-size: 14px;
+}
+
+.cad-state--load p {
+  margin: 12px 0 0;
+}
+
+.cad-state--err,
+.cad-state--empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.cad-state mat-icon {
+  font-size: 40px;
+  width: 40px;
+  height: 40px;
+  opacity: 0.6;
+}
+
+.cad-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cad-card {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  animation: cadIn 0.45s ease backwards;
+}
+
+@keyframes cadIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.cad-card__bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: linear-gradient(180deg, #818cf8, #ec4899);
+}
+
+.cad-card__main {
+  margin-left: 4px;
+  padding: 14px 14px 14px 16px;
+  background: rgba(30, 41, 59, 0.85);
+  border: 1px solid rgba(71, 85, 105, 0.4);
+  border-radius: 0 14px 14px 0;
+}
+
+.cad-card__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.cad-card__author {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+}
+
+.cad-av {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #4f46e5, #db2777);
+  color: white;
+  font-size: 12px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  text-transform: uppercase;
+}
+
+.cad-card__author strong {
+  display: block;
+  color: #f1f5f9;
+  font-size: 13px;
+}
+
+.cad-card__author time {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.cad-stars {
+  display: flex;
+  gap: 1px;
+  flex-shrink: 0;
+}
+
+.cad-stars mat-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  color: #334155;
+}
+
+.cad-stars--on {
+  color: #fbbf24 !important;
+  filter: drop-shadow(0 0 3px rgba(251, 191, 36, 0.45));
+}
+
+.cad-card__comment {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.65);
+  font-size: 13px;
+  line-height: 1.55;
+  color: #cbd5e1;
+}
+
+.cad-actions {
+  padding: 12px 16px 16px !important;
+  margin: 0 !important;
+  background: #0f172a;
+  border-top: 1px solid rgba(51, 65, 85, 0.5);
+}
+
+.cad-actions button {
+  border-radius: 10px !important;
+  border-color: rgba(148, 163, 184, 0.35) !important;
+  color: #e2e8f0 !important;
+}

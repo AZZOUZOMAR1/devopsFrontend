@@ -1,0 +1,56 @@
+<div class="cad-wrap">
+  <header class="cad-header">
+    <div class="cad-header__icon">
+      <mat-icon>format_quote</mat-icon>
+    </div>
+    <div class="cad-header__text">
+      <span class="cad-header__eyebrow">Avis membres</span>
+      <h2 class="cad-header__title">{{ data.nomClub }}</h2>
+    </div>
+    <button type="button" class="cad-close" mat-icon-button mat-dialog-close aria-label="Fermer">
+      <mat-icon>close</mat-icon>
+    </button>
+  </header>
+
+  <mat-dialog-content class="cad-body">
+    <div class="cad-state cad-state--load" *ngIf="loading">
+      <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+      <p>Chargement des avis…</p>
+    </div>
+
+    <p class="cad-state cad-state--err" *ngIf="!loading && loadError">
+      <mat-icon>error_outline</mat-icon>
+      Impossible de charger les avis.
+    </p>
+
+    <p class="cad-state cad-state--empty" *ngIf="!loading && !loadError && feedbacks.length === 0">
+      <mat-icon>rate_review</mat-icon>
+      Aucun avis pour ce club pour le moment.
+    </p>
+
+    <div class="cad-list" *ngIf="!loading && !loadError && feedbacks.length > 0">
+      <article class="cad-card" *ngFor="let f of feedbacks; let i = index" [style.animation-delay.ms]="i * 50">
+        <div class="cad-card__bar"></div>
+        <div class="cad-card__main">
+          <div class="cad-card__row">
+            <div class="cad-card__author">
+              <span class="cad-av">{{ (f.prenomEtudiant || '?').charAt(0) }}{{ (f.nomEtudiant || '').charAt(0) }}</span>
+              <div>
+                <strong>{{ f.prenomEtudiant }} {{ f.nomEtudiant }}</strong>
+                <time>{{ formatDate(f.dateCreation) }}</time>
+              </div>
+            </div>
+            <div class="cad-stars" aria-hidden="true">
+              <mat-icon *ngFor="let idx of [0,1,2,3,4]" [class.cad-stars--on]="idx < f.note">star</mat-icon>
+            </div>
+          </div>
+          <p class="cad-card__comment" *ngIf="f.commentaire">{{ f.commentaire }}</p>
+        </div>
+      </article>
+    </div>
+  </mat-dialog-content>
+
+  <mat-dialog-actions class="cad-actions" align="end">
+    <button mat-stroked-button mat-dialog-close type="button">Fermer</button>
+  </mat-dialog-actions>
+</div>

@@ -1,0 +1,20 @@
+<nav class="pagination-bar" *ngIf="totalPages > 1 || totalItems > pageSize">
+  <span class="pagination-info">
+    {{ startIndex }} - {{ endIndex }} / {{ totalItems }}
+  </span>
+  <div class="pagination-controls">
+    <button mat-icon-button [disabled]="!hasPrev" (click)="goToPage(currentPage - 1)" matTooltip="Précédent">
+      <mat-icon>chevron_left</mat-icon>
+    </button>
+    <span class="page-indicator">Page {{ currentPage }} / {{ totalPages }}</span>
+    <button mat-icon-button [disabled]="!hasNext" (click)="goToPage(currentPage + 1)" matTooltip="Suivant">
+      <mat-icon>chevron_right</mat-icon>
+    </button>
+  </div>
+  <mat-form-field appearance="outline" class="page-size-field">
+    <mat-label>Par page</mat-label>
+    <mat-select [value]="pageSize" (selectionChange)="onPageSizeChange($event.value)">
+      <mat-option *ngFor="let opt of pageSizeOptions" [value]="opt">{{ opt }}</mat-option>
+    </mat-select>
+  </mat-form-field>
+</nav>

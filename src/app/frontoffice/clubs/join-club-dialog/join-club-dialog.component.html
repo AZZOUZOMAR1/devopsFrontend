@@ -1,0 +1,75 @@
+<div class="join-club-dialog">
+  <h2 mat-dialog-title>Rejoindre {{ club.nom }}</h2>
+
+  <mat-dialog-content>
+    <p class="dialog-intro" *ngIf="!submitted">
+      Remplissez le formulaire puis rédigez votre texte de motivation. Le score total combine les valeurs numériques et l'analyse de votre texte.
+    </p>
+
+    <form [formGroup]="form" *ngIf="!submitted">
+      <div class="form-row">
+        <mat-form-field appearance="outline" class="half-width">
+          <mat-label>Expérience (1-10)</mat-label>
+          <input matInput type="number" formControlName="experience" min="1" max="10">
+          <mat-error *ngIf="form.get('experience')?.hasError('required')">Requis</mat-error>
+          <mat-error *ngIf="form.get('experience')?.hasError('min')">Min 1</mat-error>
+          <mat-error *ngIf="form.get('experience')?.hasError('max')">Max 10</mat-error>
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="half-width">
+          <mat-label>Motivation (1-10)</mat-label>
+          <input matInput type="number" formControlName="motivation" min="1" max="10">
+          <mat-error *ngIf="form.get('motivation')?.hasError('required')">Requis</mat-error>
+          <mat-error *ngIf="form.get('motivation')?.hasError('min')">Min 1</mat-error>
+          <mat-error *ngIf="form.get('motivation')?.hasError('max')">Max 10</mat-error>
+        </mat-form-field>
+      </div>
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Disponibilité hebdo (0-20 h)</mat-label>
+        <input matInput type="number" formControlName="disponibilite" min="0" max="20">
+        <mat-error *ngIf="form.get('disponibilite')?.hasError('required')">Requis</mat-error>
+        <mat-error *ngIf="form.get('disponibilite')?.hasError('min')">Min 0</mat-error>
+        <mat-error *ngIf="form.get('disponibilite')?.hasError('max')">Max 20</mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Département souhaité</mat-label>
+        <mat-select formControlName="departementSouhaite">
+          <mat-option *ngFor="let dep of departements" [value]="dep">{{ dep }}</mat-option>
+        </mat-select>
+        <mat-error *ngIf="form.get('departementSouhaite')?.hasError('required')">Veuillez choisir un département</mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Texte de motivation *</mat-label>
+        <textarea matInput formControlName="texteMotivation" rows="5"
+          placeholder="Exprimez votre motivation, vos objectifs (min 50 caractères)..."></textarea>
+        <mat-hint align="end">{{ form.get('texteMotivation')?.value?.length || 0 }}/1000</mat-hint>
+        <mat-error *ngIf="form.get('texteMotivation')?.hasError('required')">Le texte de motivation est requis</mat-error>
+        <mat-error *ngIf="form.get('texteMotivation')?.hasError('minlength')">Minimum 50 caractères</mat-error>
+        <mat-error *ngIf="form.get('texteMotivation')?.hasError('maxlength')">Maximum 1000 caractères</mat-error>
+      </mat-form-field>
+    </form>
+
+    <div class="score-result" *ngIf="submitted && scoreResult !== null">
+      <mat-icon class="score-icon">star</mat-icon>
+      <h3>Score total (valeurs numériques + texte de motivation)</h3>
+      <p class="score-value">{{ scoreResult | number:'1.1-1' }} / 100</p>
+      <p class="score-message">Votre demande a été envoyée. L'administrateur verra ce score pour accepter ou refuser votre candidature.</p>
+    </div>
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end">
+    <button mat-button (click)="onClose()">
+      {{ submitted ? 'Fermer' : 'Annuler' }}
+    </button>
+    <button
+      mat-raised-button
+      color="primary"
+      (click)="onSubmit()"
+      [disabled]="form.invalid || loading"
+      *ngIf="!submitted">
+      <mat-spinner diameter="20" *ngIf="loading"></mat-spinner>
+      <span *ngIf="!loading">Envoyer ma demande</span>
+    </button>
+  </mat-dialog-actions>
+</div>

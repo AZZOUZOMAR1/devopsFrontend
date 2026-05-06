@@ -1,0 +1,52 @@
+<div class="frontoffice-layout">
+  <!-- Navbar -->
+  <app-navbar 
+    theme="light"
+    [username]="username"
+    [userAvatar]="userAvatar"
+    [showSidebarToggle]="true"
+    (sidebarToggle)="toggleSidebar()"
+    (logout)="onLogout()">
+  </app-navbar>
+
+  <!-- Sidebar -->
+  <app-sidebar 
+    theme="light"
+    [menuItems]="frontofficeMenuItems"
+    [isCollapsed]="isSidebarCollapsed"
+    (toggleCollapse)="toggleSidebar()"
+    (menuItemClick)="onMenuItemClick($event)">
+  </app-sidebar>
+
+  <!-- Main Content -->
+  <div class="main-content" [class.sidebar-collapsed]="isSidebarCollapsed">
+    <div class="content-wrapper">
+      <router-outlet></router-outlet>
+    </div>
+  </div>
+
+  <!-- In-app notifications -->
+  <div class="notifications-wrap" *ngIf="notifications.length > 0">
+    <div class="notification-card" *ngFor="let n of notifications">
+      <div class="notification-icon">
+        <mat-icon>notifications_active</mat-icon>
+      </div>
+      <div class="notification-content">
+        <div class="notification-title">{{ n.title }}</div>
+        <div class="notification-message">{{ n.message }}</div>
+      </div>
+      <button class="notification-close" (click)="dismissNotification(n.id)" aria-label="Close notification">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  <!-- Welcome overlay (étudiant, après signin sur dashboard) -->
+  <div class="welcome-overlay" *ngIf="showWelcomeOverlay" (click)="dismissWelcomeOverlay()" [class.welcome-overlay--out]="welcomeOverlayFading">
+    <div class="welcome-overlay-card" (click)="$event.stopPropagation()">
+      <h1 class="welcome-overlay-title">Welcome To SlangEnglish</h1>
+      <p class="welcome-overlay-slogan">Your path to better English</p>
+      <p class="welcome-overlay-hint">Click anywhere or wait to continue</p>
+    </div>
+  </div>
+</div>

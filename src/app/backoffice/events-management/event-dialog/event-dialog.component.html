@@ -1,0 +1,133 @@
+<div class="event-dialog">
+  <h2 mat-dialog-title>
+    {{ viewMode ? 'Détails de l\'événement' : (isEditMode ? 'Modifier l\'événement' : 'Créer un événement') }}
+  </h2>
+
+  <mat-dialog-content>
+    <form [formGroup]="eventForm" class="event-form">
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Titre *</mat-label>
+        <input matInput formControlName="titre" placeholder="Titre de l'événement" maxlength="100">
+        <mat-hint align="end">{{ eventForm.get('titre')?.value?.length || 0 }}/100</mat-hint>
+        <mat-error *ngIf="eventForm.get('titre')?.touched && eventForm.get('titre')?.hasError('required')">
+          Le titre est requis
+        </mat-error>
+        <mat-error *ngIf="eventForm.get('titre')?.touched && eventForm.get('titre')?.hasError('minlength')">
+          Le titre doit contenir au moins 3 caractères
+        </mat-error>
+        <mat-error *ngIf="eventForm.get('titre')?.touched && eventForm.get('titre')?.hasError('maxlength')">
+          Le titre ne doit pas dépasser 100 caractères
+        </mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Organisé par un club</mat-label>
+        <mat-select formControlName="idClub" [disabled]="viewMode || clubsLoading">
+          <mat-option [value]="null">Aucun — événement général</mat-option>
+          <mat-option *ngFor="let c of clubs" [value]="c.id">{{ c.nom }}</mat-option>
+        </mat-select>
+        <mat-hint>Si vous choisissez un club, l’événement apparaîtra comme créé par ce club dans la liste publique.</mat-hint>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Description</mat-label>
+        <textarea matInput formControlName="description" rows="4" placeholder="Description de l'événement" maxlength="2000"></textarea>
+        <mat-hint align="end">{{ eventForm.get('description')?.value?.length || 0 }}/2000</mat-hint>
+        <mat-error *ngIf="eventForm.get('description')?.touched && eventForm.get('description')?.hasError('maxlength')">
+          La description ne doit pas dépasser 2000 caractères
+        </mat-error>
+      </mat-form-field>
+
+      <div class="form-row">
+        <mat-form-field appearance="outline" class="half-width">
+          <mat-label>Type</mat-label>
+          <input matInput formControlName="type" placeholder="Ex: Conférence, Atelier..." maxlength="100">
+          <mat-error *ngIf="eventForm.get('type')?.touched && eventForm.get('type')?.hasError('maxlength')">
+            Le type ne doit pas dépasser 100 caractères
+          </mat-error>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="half-width">
+          <mat-label>Statut *</mat-label>
+          <mat-select formControlName="status">
+            <mat-option *ngFor="let status of eventStatuses" [value]="status">
+              {{ getStatusLabel(status) }}
+            </mat-option>
+          </mat-select>
+          <mat-error *ngIf="eventForm.get('status')?.touched && eventForm.get('status')?.hasError('required')">
+            Le statut est requis
+          </mat-error>
+        </mat-form-field>
+      </div>
+
+      <div class="form-row">
+        <mat-form-field appearance="outline" class="half-width">
+          <mat-label>Date *</mat-label>
+          <input matInput type="date" formControlName="date">
+          <mat-error *ngIf="eventForm.get('date')?.touched && eventForm.get('date')?.hasError('required')">
+            La date est requise
+          </mat-error>
+          <mat-error *ngIf="eventForm.get('date')?.touched && eventForm.get('date')?.hasError('dateInPast')">
+            La date ne peut pas être dans le passé pour un événement planifié ou actif
+          </mat-error>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="half-width">
+          <mat-label>Heure</mat-label>
+          <input matInput type="time" formControlName="heure" placeholder="HH:mm">
+          <mat-error *ngIf="eventForm.get('heure')?.touched && eventForm.get('heure')?.hasError('invalidHeure')">
+            Format invalide (attendu : HH:mm ou HH:mm:ss)
+          </mat-error>
+        </mat-form-field>
+      </div>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Lieu</mat-label>
+        <input matInput formControlName="lieu" placeholder="Lieu de l'événement" maxlength="200">
+        <mat-error *ngIf="eventForm.get('lieu')?.touched && eventForm.get('lieu')?.hasError('maxlength')">
+          Le lieu ne doit pas dépasser 200 caractères
+        </mat-error>
+      </mat-form-field>
+
+      <div class="form-row">
+        <mat-form-field appearance="outline" class="half-width">
+          <mat-label>Capacité</mat-label>
+          <input matInput type="number" formControlName="capacite" placeholder="Nombre de places (optionnel)" min="1" max="50000">
+          <mat-error *ngIf="eventForm.get('capacite')?.touched && eventForm.get('capacite')?.hasError('min')">
+            La capacité doit être supérieure à 0
+          </mat-error>
+          <mat-error *ngIf="eventForm.get('capacite')?.touched && eventForm.get('capacite')?.hasError('max')">
+            La capacité ne peut pas dépasser 50 000
+          </mat-error>
+          <mat-error *ngIf="eventForm.get('capacite')?.touched && eventForm.get('capacite')?.hasError('invalidCapacite')">
+            Veuillez entrer un nombre valide
+          </mat-error>
+        </mat-form-field>
+
+        <div class="half-width image-upload">
+          <label class="upload-label">Image</label>
+          <div class="upload-row">
+            <input type="file" accept="image/*" (change)="onImageSelected($event)" [disabled]="viewMode" />
+            <button mat-button type="button" (click)="clearImage()" *ngIf="imagePreview && !viewMode">Supprimer</button>
+          </div>
+          <div class="image-preview" *ngIf="imagePreview">
+            <img [src]="imagePreview" alt="Aperçu image" />
+          </div>
+        </div>
+      </div>
+    </form>
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end">
+    <button mat-button (click)="onCancel()">
+      {{ viewMode ? 'Fermer' : 'Annuler' }}
+    </button>
+    <button 
+      mat-raised-button 
+      color="primary" 
+      (click)="onSubmit()"
+      [disabled]="eventForm.invalid || viewMode">
+      {{ isEditMode ? 'Modifier' : 'Créer' }}
+    </button>
+  </mat-dialog-actions>
+</div>

@@ -1,0 +1,113 @@
+<div class="cf-page">
+  <div class="cf-bg" aria-hidden="true"></div>
+
+  <header class="cf-hero">
+    <div class="cf-hero__chip">
+      <mat-icon>volunteer_activism</mat-icon>
+      <span>Voix des membres</span>
+    </div>
+    <h1 class="cf-hero__title">Votre avis <em>compte</em></h1>
+    <p class="cf-hero__sub">Notez votre club et lisez ce que vivent les autres membres — tout en restant bienveillant.</p>
+  </header>
+
+  <div class="cf-loading" *ngIf="loading">
+    <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+  </div>
+
+  <div class="cf-empty" *ngIf="!loading && clubs.length === 0">
+    <div class="cf-empty__icon-wrap">
+      <mat-icon>lock_person</mat-icon>
+    </div>
+    <h2>Pas encore membre</h2>
+    <p>Rejoignez un club pour partager un avis et voir les retours de la communauté.</p>
+  </div>
+
+  <div class="cf-layout" *ngIf="!loading && clubs.length > 0">
+    <section class="cf-panel cf-panel--form">
+      <div class="cf-panel__head">
+        <mat-icon>edit_note</mat-icon>
+        <div>
+          <h2>Donner un avis</h2>
+          <p>Sélectionnez votre club puis notez votre expérience.</p>
+        </div>
+      </div>
+
+      <div class="cf-club-pill" *ngIf="selectedClubNom">
+        <mat-icon>groups</mat-icon>
+        <span>{{ selectedClubNom }}</span>
+      </div>
+
+      <mat-form-field appearance="outline" class="cf-select" subscriptSizing="dynamic">
+        <mat-label>Club</mat-label>
+        <mat-select [(ngModel)]="selectedClubId" (selectionChange)="onClubChange()">
+          <mat-option *ngFor="let c of clubs" [value]="c.id">{{ c.nom }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <form [formGroup]="form" (ngSubmit)="submit()" class="cf-form">
+        <label class="cf-stars-label">Votre note</label>
+        <div class="cf-stars">
+          <button
+            type="button"
+            class="cf-star-btn"
+            *ngFor="let s of stars"
+            (click)="setNote(s)"
+            [class.cf-star-btn--on]="s <= (form.get('note')?.value || 0)"
+            [attr.aria-label]="'Note ' + s + ' sur 5'">
+            <mat-icon>star</mat-icon>
+          </button>
+        </div>
+
+        <mat-form-field appearance="outline" class="cf-textarea" subscriptSizing="dynamic">
+          <mat-label>Commentaire (optionnel)</mat-label>
+          <textarea matInput rows="4" formControlName="commentaire" placeholder="Ce qui vous plaît, idées d’amélioration…"></textarea>
+        </mat-form-field>
+
+        <button mat-flat-button class="cf-submit" type="submit" [disabled]="saving || !selectedClubId || form.invalid">
+          <mat-icon>send</mat-icon>
+          {{ saving ? 'Envoi…' : 'Publier mon avis' }}
+        </button>
+      </form>
+    </section>
+
+    <section class="cf-panel cf-panel--list">
+      <div class="cf-panel__head">
+        <mat-icon>forum</mat-icon>
+        <div>
+          <h2>Avis du club</h2>
+          <p>Retours récents des membres.</p>
+        </div>
+      </div>
+
+      <div class="cf-list-loading" *ngIf="loadingFeedbacks">
+        <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+      </div>
+
+      <div class="cf-no-fb" *ngIf="!loadingFeedbacks && feedbacks.length === 0">
+        <mat-icon>chat_bubble_outline</mat-icon>
+        <p>Aucun avis pour ce club pour l’instant. Soyez le premier !</p>
+      </div>
+
+      <div class="cf-cards" *ngIf="!loadingFeedbacks && feedbacks.length > 0">
+        <article class="cf-card" *ngFor="let f of feedbacks; let i = index" [style.animation-delay.ms]="i * 55">
+          <div class="cf-card__glow"></div>
+          <div class="cf-card__inner">
+            <header class="cf-card__top">
+              <div class="cf-card__who">
+                <span class="cf-card__avatar">{{ (f.prenomEtudiant || '?').charAt(0) }}{{ (f.nomEtudiant || '').charAt(0) }}</span>
+                <div>
+                  <strong class="cf-card__name">{{ f.prenomEtudiant }} {{ f.nomEtudiant }}</strong>
+                  <time class="cf-card__time">{{ formatFeedbackDate(f.dateCreation) }}</time>
+                </div>
+              </div>
+              <div class="cf-card__score" [attr.data-note]="f.note">
+                <mat-icon *ngFor="let _ of [1,2,3,4,5]; let idx = index" [class.cf-card__star--fill]="idx < f.note">star</mat-icon>
+              </div>
+            </header>
+            <blockquote class="cf-card__quote" *ngIf="f.commentaire">{{ f.commentaire }}</blockquote>
+          </div>
+        </article>
+      </div>
+    </section>
+  </div>
+</div>

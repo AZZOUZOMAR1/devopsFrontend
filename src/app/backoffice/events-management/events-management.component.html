@@ -1,0 +1,227 @@
+<div class="events-management">
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="header-content">
+      <h1>Gestion des Événements</h1>
+      <p class="header-subtitle">Créez et gérez les événements</p>
+    </div>
+    <div class="header-actions">
+      <button mat-raised-button class="action-btn primary" (click)="addEvent()">
+        <mat-icon>add</mat-icon>
+        <span>Créer un événement</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div class="loading-container" *ngIf="loading">
+    <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="stats-row" *ngIf="!loading">
+    <div class="mini-stat-card">
+      <div class="mini-stat-icon purple">
+        <mat-icon>event</mat-icon>
+      </div>
+      <div class="mini-stat-info">
+        <span class="mini-stat-value">{{ evenements.length }}</span>
+        <span class="mini-stat-label">Total Événements</span>
+      </div>
+    </div>
+    <div class="mini-stat-card">
+      <div class="mini-stat-icon green">
+        <mat-icon>check_circle</mat-icon>
+      </div>
+      <div class="mini-stat-info">
+        <span class="mini-stat-value">{{ activeCount }}</span>
+        <span class="mini-stat-label">Actifs</span>
+      </div>
+    </div>
+    <div class="mini-stat-card">
+      <div class="mini-stat-icon orange">
+        <mat-icon>schedule</mat-icon>
+      </div>
+      <div class="mini-stat-info">
+        <span class="mini-stat-value">{{ plannedCount }}</span>
+        <span class="mini-stat-label">Planifiés</span>
+      </div>
+    </div>
+    <div class="mini-stat-card">
+      <div class="mini-stat-icon blue">
+        <mat-icon>done_all</mat-icon>
+      </div>
+      <div class="mini-stat-info">
+        <span class="mini-stat-value">{{ completedCount }}</span>
+        <span class="mini-stat-label">Terminés</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Statistiques avancées -->
+  <div class="stats-advanced" *ngIf="!loading && statistiques">
+    <h3 class="stats-section-title">Statistiques avancées</h3>
+    <div class="stats-advanced-grid">
+      <div class="stat-advanced-card">
+        <mat-icon class="stat-icon">pie_chart</mat-icon>
+        <div class="stat-content">
+          <span class="stat-value">{{ statistiques.tauxRemplissage | number:'1.1-1' }}%</span>
+          <span class="stat-label">Taux de remplissage</span>
+        </div>
+      </div>
+      <div class="stat-advanced-card">
+        <mat-icon class="stat-icon">people</mat-icon>
+        <div class="stat-content">
+          <span class="stat-value">{{ statistiques.moyenneParticipation | number:'1.1-1' }}</span>
+          <span class="stat-label">Moyenne de participation</span>
+        </div>
+      </div>
+      <div class="stat-advanced-card" *ngIf="statistiques.plusPopulaire">
+        <mat-icon class="stat-icon">star</mat-icon>
+        <div class="stat-content">
+          <span class="stat-value">{{ statistiques.plusPopulaire.titre }}</span>
+          <span class="stat-label">Événement le plus populaire ({{ statistiques.plusPopulaire.nombreInscriptions }} inscrits)</span>
+        </div>
+      </div>
+    </div>
+    <div class="evolution-section" *ngIf="statistiques.evolutionMensuelle?.length">
+      <h4>Évolution mensuelle des inscriptions</h4>
+      <div class="evolution-chart">
+        <div class="evolution-item" *ngFor="let ev of statistiques.evolutionMensuelle">
+          <div class="evolution-bar-container">
+            <div class="evolution-bar" [style.height.%]="getEvolutionHeight(ev.nombreInscriptions)">
+              <span class="evolution-value">{{ ev.nombreInscriptions }}</span>
+            </div>
+          </div>
+          <span class="evolution-label">{{ ev.mois }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters Section -->
+  <div class="filters-section" *ngIf="!loading">
+    <div class="search-container">
+      <mat-icon class="search-icon">search</mat-icon>
+      <input 
+        type="text" 
+        placeholder="Rechercher un événement..." 
+        class="search-input"
+        [(ngModel)]="searchTerm"
+        (input)="onSearch()">
+    </div>
+    
+    <div class="filter-controls">
+      <mat-form-field appearance="outline" class="filter-field">
+        <mat-label>Type</mat-label>
+        <mat-select [(ngModel)]="selectedType" (selectionChange)="onTypeChange()">
+          <mat-option value="all">Tous les types</mat-option>
+          <mat-option *ngFor="let type of getUniqueTypes()" [value]="type">{{ type }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+      
+      <mat-form-field appearance="outline" class="filter-field">
+        <mat-label>Statut</mat-label>
+        <mat-select [(ngModel)]="selectedStatus" (selectionChange)="onStatusChange()">
+          <mat-option value="all">Tous les statuts</mat-option>
+          <mat-option value="PLANNED">Planifié</mat-option>
+          <mat-option value="ACTIVE">Actif</mat-option>
+          <mat-option value="COMPLETED">Terminé</mat-option>
+          <mat-option value="CANCELLED">Annulé</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+  </div>
+
+  <!-- Events Grid -->
+  <div class="events-grid" *ngIf="!loading">
+    <div class="event-card" *ngFor="let evenement of paginatedEvenements">
+      <div class="event-header">
+        <div class="event-avatar" *ngIf="evenement.image">
+          <img [src]="evenement.image" [alt]="evenement.titre">
+        </div>
+        <div class="event-avatar-placeholder" *ngIf="!evenement.image">
+          <mat-icon>event</mat-icon>
+        </div>
+        <span [class]="getStatusClass(evenement.status)">{{ getStatusLabel(evenement.status) }}</span>
+      </div>
+      <div class="event-content">
+        <div class="event-title-block">
+          <h3>{{ evenement.titre }}</h3>
+          <span *ngIf="evenement.nomClubOrganisateur" class="club-organizer-chip admin">
+            <mat-icon class="chip-icon">groups</mat-icon>
+            Par {{ evenement.nomClubOrganisateur }}
+          </span>
+        </div>
+        <p class="event-description" *ngIf="evenement.description">
+          {{ evenement.description }}
+        </p>
+        
+        <div class="event-meta">
+          <div class="meta-item" *ngIf="evenement.date">
+            <mat-icon>event</mat-icon>
+            <span>{{ formatDate(evenement.date) }}</span>
+          </div>
+          <div class="meta-item" *ngIf="evenement.heure">
+            <mat-icon>schedule</mat-icon>
+            <span>{{ formatTime(evenement.heure) }}</span>
+          </div>
+          <div class="meta-item" *ngIf="evenement.lieu">
+            <mat-icon>location_on</mat-icon>
+            <span>{{ evenement.lieu }}</span>
+          </div>
+          <div class="meta-item" *ngIf="evenement.type">
+            <mat-icon>category</mat-icon>
+            <span>{{ evenement.type }}</span>
+          </div>
+        </div>
+        
+        <div class="event-stats">
+          <div class="stat" *ngIf="evenement.capacite">
+            <span class="stat-value">{{ evenement.capacite }}</span>
+            <span class="stat-label">Capacité</span>
+          </div>
+        </div>
+        
+        <div class="event-actions">
+          <button mat-button class="view-btn" (click)="viewEvent(evenement)">
+            <mat-icon>visibility</mat-icon>
+            Voir
+          </button>
+          <button mat-icon-button class="action-icon feedback" (click)="viewFeedbacks(evenement)" matTooltip="Avis & Feedback">
+            <mat-icon>star</mat-icon>
+          </button>
+          <button mat-icon-button class="action-icon edit" (click)="editEvent(evenement)" matTooltip="Modifier">
+            <mat-icon>edit</mat-icon>
+          </button>
+          <button mat-icon-button class="action-icon delete" (click)="deleteEvent(evenement)" matTooltip="Supprimer">
+            <mat-icon>delete</mat-icon>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pagination -->
+  <div class="pagination-container" *ngIf="!loading && filteredEvenements.length > 0">
+    <mat-paginator
+      [length]="filteredEvenements.length"
+      [pageSize]="pageSize"
+      [pageSizeOptions]="pageSizeOptions"
+      [pageIndex]="pageIndex"
+      (page)="onPageChange($event)"
+      showFirstLastButtons>
+    </mat-paginator>
+  </div>
+
+  <!-- Empty State -->
+  <div class="empty-state" *ngIf="!loading && filteredEvenements.length === 0">
+    <mat-icon>event_busy</mat-icon>
+    <h3>Aucun événement trouvé</h3>
+    <p>Essayez de modifier vos critères de recherche ou créez votre premier événement</p>
+    <button mat-raised-button class="action-btn primary" (click)="addEvent()">
+      <mat-icon>add</mat-icon>
+      Créer un événement
+    </button>
+  </div>
+</div>

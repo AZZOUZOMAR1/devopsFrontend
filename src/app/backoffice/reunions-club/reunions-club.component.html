@@ -1,0 +1,201 @@
+<div class="bo-page bo-page--reunions">
+  <div class="bo-bg" aria-hidden="true"></div>
+
+  <header class="bo-hero">
+    <div class="bo-hero__badge">
+      <mat-icon>event_note</mat-icon>
+      <span>Planification</span>
+    </div>
+    <h1 class="bo-hero__title">Réunions <em>clubs</em></h1>
+    <p class="bo-hero__lead">Créez des réunions présentielles ou en ligne — les membres reçoivent une notification par e-mail.</p>
+  </header>
+
+  <div class="loading-container" *ngIf="loadingClubs">
+    <mat-progress-bar mode="indeterminate" class="bo-progress"></mat-progress-bar>
+  </div>
+
+  <div class="layout-grid" *ngIf="!loadingClubs">
+    <section class="bo-panel bo-panel--form">
+      <div class="bo-panel__shine"></div>
+      <div class="bo-panel__head">
+        <mat-icon>add_circle</mat-icon>
+        <div>
+          <span class="bo-panel__eyebrow">Création</span>
+          <h2 class="bo-panel__title">Nouvelle réunion</h2>
+        </div>
+      </div>
+      <div class="bo-panel__body bo-panel__body--form">
+        <form [formGroup]="form" (ngSubmit)="submit()" class="reunion-form" novalidate>
+          <!-- 1. Club -->
+          <section class="form-section" aria-labelledby="reunion-section-club">
+            <header class="form-section__head">
+              <span class="form-section__step" aria-hidden="true">1</span>
+              <div class="form-section__titles">
+                <h3 id="reunion-section-club" class="form-section__title">Club concerné</h3>
+                <p class="form-section__lead">Les membres de ce club recevront l’e-mail d’invitation.</p>
+              </div>
+            </header>
+            <div class="form-section__fields">
+              <mat-form-field appearance="outline" class="full-width" subscriptSizing="dynamic">
+                <mat-label>Club</mat-label>
+                <mat-select formControlName="clubId" (selectionChange)="onClubSelected()">
+                  <mat-option *ngFor="let c of clubs" [value]="c.id">{{ c.nom }}</mat-option>
+                </mat-select>
+                <mat-hint>Obligatoire</mat-hint>
+                <mat-error>Choisissez un club</mat-error>
+              </mat-form-field>
+            </div>
+          </section>
+
+          <!-- 2. Date & heure -->
+          <section class="form-section" aria-labelledby="reunion-section-when">
+            <header class="form-section__head">
+              <span class="form-section__step" aria-hidden="true">2</span>
+              <div class="form-section__titles">
+                <h3 id="reunion-section-when" class="form-section__title">Date et heure</h3>
+                <p class="form-section__lead">Planifiez le créneau ; la date ne peut pas être antérieure à aujourd’hui.</p>
+              </div>
+            </header>
+            <div class="form-section__fields form-section__fields--datetime">
+              <mat-form-field appearance="outline" class="field-datetime" subscriptSizing="dynamic">
+                <mat-label>Date</mat-label>
+                <input matInput type="date" formControlName="date" />
+                <mat-hint>jj/mm/aaaa</mat-hint>
+                <mat-error *ngIf="form.get('date')?.hasError('required')">Date requise</mat-error>
+                <mat-error *ngIf="form.get('date')?.hasError('datePast')">La date ne peut pas être dans le passé</mat-error>
+              </mat-form-field>
+              <mat-form-field appearance="outline" class="field-datetime" subscriptSizing="dynamic">
+                <mat-label>Heure</mat-label>
+                <input matInput type="time" formControlName="heure" />
+                <mat-hint>Heure locale</mat-hint>
+                <mat-error *ngIf="form.get('heure')?.hasError('required')">Heure requise</mat-error>
+              </mat-form-field>
+            </div>
+          </section>
+
+          <!-- 3. Format & lieu / lien -->
+          <section class="form-section" aria-labelledby="reunion-section-format">
+            <header class="form-section__head">
+              <span class="form-section__step" aria-hidden="true">3</span>
+              <div class="form-section__titles">
+                <h3 id="reunion-section-format" class="form-section__title">Format et lieu</h3>
+                <p class="form-section__lead">Présentiel ou visio : les champs s’adaptent au type choisi.</p>
+              </div>
+            </header>
+            <div class="form-section__fields">
+              <mat-form-field appearance="outline" class="full-width" subscriptSizing="dynamic">
+                <mat-label>Type de réunion</mat-label>
+                <mat-select formControlName="typeReunion">
+                  <mat-option *ngFor="let t of types" [value]="t.value">{{ t.label }}</mat-option>
+                </mat-select>
+                <mat-hint>Présentielle ou en ligne</mat-hint>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="full-width" subscriptSizing="dynamic" *ngIf="form.get('typeReunion')?.value === 'PRESENTIEL'">
+                <mat-label>Lieu</mat-label>
+                <input matInput formControlName="lieu" placeholder="Ex. Salle A12, bâtiment central…" autocomplete="off" />
+                <mat-hint>Adresse ou salle visible par les participants</mat-hint>
+                <mat-error>Lieu requis pour une réunion présentielle</mat-error>
+              </mat-form-field>
+
+              <div class="hint hint--video" *ngIf="form.get('typeReunion')?.value === 'EN_LIGNE'">
+                <mat-icon>videocam</mat-icon>
+                <span>Si le lien est vide, un salon de visioconférence (Jitsi) sera créé automatiquement.</span>
+              </div>
+              <mat-form-field appearance="outline" class="full-width" subscriptSizing="dynamic" *ngIf="form.get('typeReunion')?.value === 'EN_LIGNE'">
+                <mat-label>Lien de la réunion (optionnel)</mat-label>
+                <input matInput formControlName="lienReunion" placeholder="https://…" autocomplete="off" />
+                <mat-hint>Teams, Zoom, Meet… ou laissez vide pour Jitsi</mat-hint>
+                <mat-error *ngIf="form.get('lienReunion')?.hasError('pattern')">URL invalide (http:// ou https://)</mat-error>
+              </mat-form-field>
+            </div>
+          </section>
+
+          <!-- 4. Audience -->
+          <section class="form-section form-section--last" aria-labelledby="reunion-section-audience">
+            <header class="form-section__head">
+              <span class="form-section__step" aria-hidden="true">4</span>
+              <div class="form-section__titles">
+                <h3 id="reunion-section-audience" class="form-section__title">Participants</h3>
+                <p class="form-section__lead">Tout le club ou seulement certains départements liés au club.</p>
+              </div>
+            </header>
+            <div class="form-section__fields">
+              <mat-form-field appearance="outline" class="full-width" subscriptSizing="dynamic">
+                <mat-label>Qui est invité ?</mat-label>
+                <mat-select formControlName="audience">
+                  <mat-option value="TOUS_CLUB">Tous les membres du club</mat-option>
+                  <mat-option value="DEPARTEMENTS">Départements ciblés uniquement</mat-option>
+                </mat-select>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="full-width" subscriptSizing="dynamic" *ngIf="form.get('audience')?.value === 'DEPARTEMENTS'">
+                <mat-label>Départements</mat-label>
+                <mat-select formControlName="departementsCibles" multiple>
+                  <mat-option *ngFor="let dep of departementsClub" [value]="dep">{{ dep }}</mat-option>
+                </mat-select>
+                <mat-hint>Sélection multiple</mat-hint>
+                <mat-error>Choisissez au moins un département</mat-error>
+              </mat-form-field>
+            </div>
+          </section>
+
+          <footer class="form-footer">
+            <button mat-flat-button class="btn-submit-reunion" type="submit" [disabled]="submitting || form.invalid">
+              <mat-icon>send</mat-icon>
+              Créer et notifier les membres
+            </button>
+            <p class="form-footer__note">Un e-mail part aux membres concernés dès la validation.</p>
+          </footer>
+        </form>
+      </div>
+    </section>
+
+    <section class="bo-panel bo-panel--list">
+      <div class="bo-panel__shine bo-panel__shine--alt"></div>
+      <div class="bo-panel__head">
+        <mat-icon>calendar_month</mat-icon>
+        <div>
+          <span class="bo-panel__eyebrow">Suivi</span>
+          <h2 class="bo-panel__title">Réunions du club</h2>
+        </div>
+      </div>
+      <div class="bo-panel__body">
+        <p class="empty-hint" *ngIf="!selectedClubId">Sélectionnez un club dans le formulaire pour afficher ses réunions.</p>
+        <div class="loading-inline" *ngIf="selectedClubId && loadingReunions">
+          <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+        </div>
+        <div class="reunion-list" *ngIf="selectedClubId && !loadingReunions">
+          <div class="reunion-item" *ngFor="let r of reunions">
+            <div class="reunion-main">
+              <div class="reunion-badges">
+                <span class="badge" [class.badge--online]="r.typeReunion === 'EN_LIGNE'">
+                  {{ reunionTypeLabel(r.typeReunion) }}
+                </span>
+                <span class="badge badge--audience" [class.badge--online]="r.audience === 'DEPARTEMENTS'">
+                  {{ r.audience === 'DEPARTEMENTS' ? 'Départements' : 'Tout le club' }}
+                </span>
+              </div>
+              <p class="reunion-datetime">
+                <mat-icon>schedule</mat-icon>
+                <strong>{{ r.date }}</strong>
+                <span *ngIf="r.heure"> à {{ r.heure }}</span>
+              </p>
+              <p class="detail" *ngIf="r.typeReunion === 'PRESENTIEL' && r.lieu">
+                <mat-icon>place</mat-icon> {{ r.lieu }}
+              </p>
+              <p class="detail link" *ngIf="r.typeReunion === 'EN_LIGNE' && r.lienReunion">
+                <mat-icon>link</mat-icon>
+                <a [href]="r.lienReunion" target="_blank" rel="noopener">{{ r.lienReunion }}</a>
+              </p>
+            </div>
+            <button mat-icon-button class="btn-delete-reunion" (click)="deleteReunion(r)" matTooltip="Supprimer">
+              <mat-icon>delete_outline</mat-icon>
+            </button>
+          </div>
+          <p class="empty-hint empty-hint--soft" *ngIf="reunions.length === 0">Aucune réunion enregistrée pour ce club.</p>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>

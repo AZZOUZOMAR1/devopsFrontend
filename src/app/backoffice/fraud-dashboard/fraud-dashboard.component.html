@@ -1,0 +1,184 @@
+<div class="fraud-container">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <div class="header-icon">
+        <mat-icon>security</mat-icon>
+      </div>
+      <div>
+        <h1>Détection de Fraude</h1>
+        <p class="subtitle">Surveillance des candidatures suspectes en temps réel</p>
+      </div>
+    </div>
+    <button mat-raised-button class="refresh-btn" (click)="loadFraud()">
+      <mat-icon>refresh</mat-icon>
+      Actualiser
+    </button>
+  </div>
+
+  <!-- KPI Cards -->
+  <div class="kpi-grid">
+    <div class="kpi-card" [class.active]="selectedLevel === 'ALL'"
+         (click)="onFilterChange('ALL')">
+      <div class="kpi-icon all">
+        <mat-icon>list_alt</mat-icon>
+      </div>
+      <div class="kpi-info">
+        <span class="kpi-value">{{ getCount('ALL') }}</span>
+        <span class="kpi-label">Total</span>
+      </div>
+    </div>
+
+    <div class="kpi-card" [class.active]="selectedLevel === 'CLEAN'"
+         (click)="onFilterChange('CLEAN')">
+      <div class="kpi-icon clean">
+        <mat-icon>check_circle</mat-icon>
+      </div>
+      <div class="kpi-info">
+        <span class="kpi-value">{{ getCount('CLEAN') }}</span>
+        <span class="kpi-label">Clean</span>
+      </div>
+    </div>
+
+    <div class="kpi-card" [class.active]="selectedLevel === 'SUSPICIOUS'"
+         (click)="onFilterChange('SUSPICIOUS')">
+      <div class="kpi-icon suspicious">
+        <mat-icon>warning</mat-icon>
+      </div>
+      <div class="kpi-info">
+        <span class="kpi-value">{{ getCount('SUSPICIOUS') }}</span>
+        <span class="kpi-label">Suspects</span>
+      </div>
+    </div>
+
+    <div class="kpi-card" [class.active]="selectedLevel === 'BLOCKED'"
+         (click)="onFilterChange('BLOCKED')">
+      <div class="kpi-icon blocked">
+        <mat-icon>block</mat-icon>
+      </div>
+      <div class="kpi-info">
+        <span class="kpi-value">{{ getCount('BLOCKED') }}</span>
+        <span class="kpi-label">Bloqués</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chargement -->
+  <div *ngIf="loading" class="loading">
+    <mat-progress-spinner mode="indeterminate" diameter="48"></mat-progress-spinner>
+    <p>Chargement...</p>
+  </div>
+
+  <!-- Tableau -->
+  <mat-card *ngIf="!loading" class="table-card">
+    <mat-card-header>
+      <mat-icon mat-card-avatar>table_chart</mat-icon>
+      <mat-card-title>
+        {{ selectedLevel === 'ALL' ? 'Toutes les candidatures' : 'Candidatures ' + selectedLevel }}
+      </mat-card-title>
+      <mat-card-subtitle>{{ filteredFraud.length }} résultat(s)</mat-card-subtitle>
+    </mat-card-header>
+    <mat-card-content>
+      <div class="table-wrapper">
+        <table mat-table [dataSource]="filteredFraud" class="fraud-table">
+
+          <!-- Niveau -->
+          <ng-container matColumnDef="fraudLevel">
+            <th mat-header-cell *matHeaderCellDef>Niveau</th>
+            <td mat-cell *matCellDef="let row">
+              <span class="level-badge"
+                    [ngStyle]="{'background': getLevelBg(row.fraudLevel),
+                                'color': getLevelColor(row.fraudLevel)}">
+                <mat-icon>{{ getLevelIcon(row.fraudLevel) }}</mat-icon>
+                {{ row.fraudLevel }}
+              </span>
+            </td>
+          </ng-container>
+
+          <!-- Email -->
+          <ng-container matColumnDef="applicantEmail">
+            <th mat-header-cell *matHeaderCellDef>Email</th>
+            <td mat-cell *matCellDef="let row">
+              <span class="email-cell">{{ row.applicantEmail || '-' }}</span>
+            </td>
+          </ng-container>
+
+          <!-- Student ID -->
+          <ng-container matColumnDef="studentId">
+            <th mat-header-cell *matHeaderCellDef>Étudiant</th>
+            <td mat-cell *matCellDef="let row">
+              <span class="id-badge">#{{ row.studentId }}</span>
+            </td>
+          </ng-container>
+
+          <!-- Offre ID -->
+          <ng-container matColumnDef="jobOfferId">
+            <th mat-header-cell *matHeaderCellDef>Offre</th>
+            <td mat-cell *matCellDef="let row">
+              <span class="id-badge">#{{ row.jobOfferId }}</span>
+            </td>
+          </ng-container>
+
+          <!-- Score total -->
+          <ng-container matColumnDef="totalScore">
+            <th mat-header-cell *matHeaderCellDef>Score Fraude</th>
+            <td mat-cell *matCellDef="let row">
+              <div class="score-cell">
+                <div class="score-bar-track">
+                  <div class="score-bar-fill"
+                       [style.width]="getScorePercent(row.totalScore) + '%'"
+                       [ngStyle]="{'background': getScoreColor(row.totalScore)}">
+                  </div>
+                </div>
+                <span class="score-pct"
+                      [ngStyle]="{'color': getScoreColor(row.totalScore)}">
+                  {{ getScorePercent(row.totalScore) }}%
+                </span>
+              </div>
+            </td>
+          </ng-container>
+
+          <!-- Raisons -->
+          <ng-container matColumnDef="reasons">
+            <th mat-header-cell *matHeaderCellDef>Raisons</th>
+            <td mat-cell *matCellDef="let row">
+              <div class="reasons-cell">
+                <span *ngFor="let reason of row.reasons" class="reason-tag">
+                  {{ reason }}
+                </span>
+                <span *ngIf="!row.reasons || row.reasons.length === 0"
+                      class="no-reason">Aucune</span>
+              </div>
+            </td>
+          </ng-container>
+
+          <!-- Date -->
+          <ng-container matColumnDef="detectedAt">
+            <th mat-header-cell *matHeaderCellDef>Détecté le</th>
+            <td mat-cell *matCellDef="let row">
+              <span class="date-cell">
+                {{ row.detectedAt | date:'dd/MM/yyyy HH:mm' }}
+              </span>
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: displayedColumns;"
+              [class.suspicious-row]="row.fraudLevel === 'SUSPICIOUS'"
+              [class.blocked-row]="row.fraudLevel === 'BLOCKED'">
+          </tr>
+
+          <tr class="mat-row" *matNoDataRow>
+            <td class="mat-cell empty-row" [attr.colspan]="displayedColumns.length">
+              <mat-icon>inbox</mat-icon>
+              <p>Aucune candidature trouvée</p>
+            </td>
+          </tr>
+
+        </table>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+</div>

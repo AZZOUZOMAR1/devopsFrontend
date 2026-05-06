@@ -1,0 +1,574 @@
+<!-- Loading -->
+<div *ngIf="loading" class="loading-screen">
+  <mat-progress-spinner mode="indeterminate" diameter="48">
+  </mat-progress-spinner>
+  <p>Loading offer...</p>
+</div>
+
+<div class="page-wrapper" *ngIf="!loading && jobOffer">
+
+  <!-- ─── HERO HEADER ─────────────────────────── -->
+  <div class="hero-header">
+    <button mat-icon-button (click)="goBack()" class="back-btn">
+      <mat-icon>arrow_back</mat-icon>
+    </button>
+    <div class="hero-content">
+      <div class="company-avatar">
+        {{ jobOffer.company.charAt(0).toUpperCase() }}
+      </div>
+      <div class="hero-info">
+        <div class="hero-badges">
+          <span class="contract-chip"
+                [ngClass]="'chip-' + jobOffer.contractType">
+            {{ jobOffer.contractType }}
+          </span>
+          <span class="active-chip">
+            <span class="active-dot"></span> Active
+          </span>
+        </div>
+        <h1 class="hero-title">{{ jobOffer.title }}</h1>
+        <div class="hero-meta">
+          <span class="meta-pill">
+            <mat-icon>business</mat-icon>{{ jobOffer.company }}
+          </span>
+          <span class="meta-pill" *ngIf="jobOffer.location">
+            <mat-icon>location_on</mat-icon>{{ jobOffer.location }}
+          </span>
+          <span class="meta-pill" *ngIf="jobOffer.salary">
+            <mat-icon>payments</mat-icon>{{ jobOffer.salary }} TND/year
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── LAYOUT ──────────────────────────────── -->
+  <div class="page-layout">
+
+    <!-- ─── COLONNE PRINCIPALE ───────────────── -->
+    <div class="main-column">
+
+      <!-- Description -->
+      <mat-card class="content-card">
+        <div class="card-header-custom">
+          <div class="card-icon desc-icon">
+            <mat-icon>description</mat-icon>
+          </div>
+          <div>
+            <h2>Job Description</h2>
+            <p>Full details about this position</p>
+          </div>
+        </div>
+        <mat-divider></mat-divider>
+        <mat-card-content class="description-content">
+          <p>{{ jobOffer.description }}</p>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- ✅ Application Success -->
+      <div *ngIf="applicationSuccess" class="success-banner">
+        <div class="success-icon-wrap">
+          <mat-icon>check_circle</mat-icon>
+        </div>
+        <div>
+          <h3>Application Submitted!</h3>
+          <p>Your application has been sent. Good luck!</p>
+        </div>
+      </div>
+
+      <!-- ✅ Loading Quiz -->
+      <div *ngIf="loadingQuiz" class="loading-screen">
+        <mat-progress-spinner mode="indeterminate" diameter="40">
+        </mat-progress-spinner>
+        <p>Loading your quiz...</p>
+      </div>
+
+      <!-- ✅ Submitting Quiz -->
+      <div *ngIf="submittingQuiz" class="loading-screen">
+        <mat-progress-spinner mode="indeterminate" diameter="40">
+        </mat-progress-spinner>
+        <p>Evaluating your answers...</p>
+      </div>
+
+      <!-- ─── FORMULAIRE ──────────────────────── -->
+      <mat-card class="content-card apply-card"
+                *ngIf="!applicationSuccess && !showQuizChoice
+                       && !showQuiz && !showQuizResult
+                       && !loadingQuiz && !submittingQuiz">
+        <div class="card-header-custom">
+          <div class="card-icon apply-icon">
+            <mat-icon>send</mat-icon>
+          </div>
+          <div>
+            <h2>Apply for this Position</h2>
+            <p>Fill in your details below</p>
+          </div>
+        </div>
+        <mat-divider></mat-divider>
+
+        <mat-card-content>
+          <form [formGroup]="applicationForm"
+                (ngSubmit)="submitApplication()"
+                class="apply-form">
+
+            <div *ngIf="applicationError" class="error-banner">
+              <mat-icon>warning_amber</mat-icon>
+              {{ applicationError }}
+            </div>
+
+            <div class="form-row">
+              <mat-form-field appearance="outline" class="half">
+                <mat-label>Full Name</mat-label>
+                <mat-icon matPrefix>person</mat-icon>
+                <input matInput formControlName="applicantName"
+                       placeholder="John Doe"/>
+                <mat-error>Min 3 characters required</mat-error>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="half">
+                <mat-label>Email Address</mat-label>
+                <mat-icon matPrefix>email</mat-icon>
+                <input matInput type="email"
+                       formControlName="applicantEmail"
+                       placeholder="john@example.com"/>
+                <mat-error>Valid email required</mat-error>
+              </mat-form-field>
+            </div>
+
+            <!-- Upload CV -->
+            <div class="upload-zone" (click)="cvInput.click()"
+                 [class.uploaded]="cvFile">
+              <div class="upload-icon-wrap" [class.done]="cvFile">
+                <mat-icon>
+                  {{ cvFile ? 'check_circle' : 'upload_file' }}
+                </mat-icon>
+              </div>
+              <div class="upload-text">
+                <span class="upload-title">
+                  {{ cvFile ? cvFile.name : 'Upload your CV' }}
+                </span>
+                <span class="upload-hint">PDF only — max 5MB</span>
+              </div>
+              <span class="upload-badge" *ngIf="!cvFile">CV *</span>
+              <span class="upload-badge done" *ngIf="cvFile">
+                ✓ Ready
+              </span>
+              <input #cvInput type="file" accept=".pdf"
+                     (change)="onCvSelected($event)" hidden>
+            </div>
+
+            <!-- Upload Cover Letter -->
+            <div class="upload-zone" (click)="coverInput.click()"
+                 [class.uploaded]="coverLetterFile">
+              <div class="upload-icon-wrap" [class.done]="coverLetterFile">
+                <mat-icon>
+                  {{ coverLetterFile ? 'check_circle' : 'description' }}
+                </mat-icon>
+              </div>
+              <div class="upload-text">
+                <span class="upload-title">
+                  {{ coverLetterFile ? coverLetterFile.name
+                                     : 'Upload Cover Letter' }}
+                </span>
+                <span class="upload-hint">PDF only — max 5MB</span>
+              </div>
+              <span class="upload-badge" *ngIf="!coverLetterFile">
+                Letter *
+              </span>
+              <span class="upload-badge done" *ngIf="coverLetterFile">
+                ✓ Ready
+              </span>
+              <input #coverInput type="file" accept=".pdf"
+                     (change)="onCoverLetterSelected($event)" hidden>
+            </div>
+
+            <button mat-raised-button type="submit"
+                    class="submit-btn" [disabled]="submitting">
+              <mat-progress-spinner *ngIf="submitting"
+                mode="indeterminate" diameter="18">
+              </mat-progress-spinner>
+              <mat-icon *ngIf="!submitting">send</mat-icon>
+              {{ submitting ? 'Sending...' : 'Submit Application' }}
+            </button>
+          </form>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- ─── POPUP CHOIX QUIZ ─────────────────── -->
+      <mat-card class="content-card quiz-choice-card"
+                *ngIf="showQuizChoice">
+        <div class="quiz-choice-header">
+          <div class="quiz-choice-icon">🎉</div>
+          <h2>Application Submitted!</h2>
+          <p>Would you like to take a compatibility test to boost
+             your chances?</p>
+        </div>
+
+        <mat-divider></mat-divider>
+
+        <div class="quiz-choice-body">
+
+          <!-- Option OUI -->
+          <div class="quiz-option yes-option" (click)="startQuiz()">
+            <div class="option-icon">🎯</div>
+            <div class="option-info">
+              <h4>Yes, take the test!</h4>
+              <p>5 questions • Score >= 60% → Interview scheduled
+                 automatically</p>
+            </div>
+            <mat-icon>chevron_right</mat-icon>
+          </div>
+
+          <!-- Option NON -->
+          <div class="quiz-option no-option" (click)="skipQuiz()">
+            <div class="option-icon">⏭️</div>
+            <div class="option-info">
+              <h4>No, just submit</h4>
+              <p>Your application will be reviewed manually
+                 (Status: Pending)</p>
+            </div>
+            <mat-icon>chevron_right</mat-icon>
+          </div>
+
+        </div>
+      </mat-card>
+
+      <!-- ─── QUIZ QCM ──────────────────────────── -->
+      <mat-card class="content-card quiz-card" *ngIf="showQuiz">
+
+        <!-- Header -->
+        <div class="quiz-header">
+          <div class="quiz-progress-info">
+            <span class="quiz-title">🎯 Compatibility Test</span>
+            <span class="quiz-counter">
+              {{ currentQuestion + 1 }} / {{ quizQuestions.length }}
+            </span>
+          </div>
+          <div class="quiz-progress-bar-track">
+            <div class="quiz-progress-bar-fill"
+                 [style.width]="((currentQuestion + 1)
+                   / quizQuestions.length * 100) + '%'">
+            </div>
+          </div>
+          <div class="quiz-answered">
+            {{ answeredCount }} / {{ quizQuestions.length }} answered
+          </div>
+        </div>
+
+        <mat-divider></mat-divider>
+
+        <!-- Question -->
+        <div class="quiz-body" *ngIf="quizQuestions[currentQuestion]">
+          <p class="quiz-question">
+            {{ quizQuestions[currentQuestion].question }}
+          </p>
+
+          <!-- Choix -->
+          <div class="quiz-choices">
+            <div *ngFor="let choice of quizQuestions[currentQuestion].choices"
+                 class="quiz-choice"
+                 [class.selected]="getSelectedAnswer(currentQuestion)
+                   === choice.charAt(0)"
+                 (click)="selectAnswer(choice.charAt(0))">
+              <div class="choice-letter">{{ choice.charAt(0) }}</div>
+              <span class="choice-text">{{ choice.substring(3) }}</span>
+              <mat-icon class="choice-check"
+                *ngIf="getSelectedAnswer(currentQuestion)
+                  === choice.charAt(0)">
+                check_circle
+              </mat-icon>
+            </div>
+          </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="quiz-nav">
+          <button mat-stroked-button
+                  (click)="prevQuestion()"
+                  [disabled]="currentQuestion === 0">
+            <mat-icon>arrow_back</mat-icon> Previous
+          </button>
+
+          <button mat-stroked-button
+                  *ngIf="currentQuestion < quizQuestions.length - 1"
+                  (click)="nextQuestion()"
+                  [disabled]="!isAnswered(currentQuestion)">
+            Next <mat-icon>arrow_forward</mat-icon>
+          </button>
+
+          <button mat-raised-button
+                  class="submit-quiz-btn"
+                  *ngIf="currentQuestion === quizQuestions.length - 1"
+                  (click)="submitQuiz()"
+                  [disabled]="!allAnswered">
+            <mat-icon>send</mat-icon>
+            Submit Quiz
+          </button>
+        </div>
+
+      </mat-card>
+
+      <!-- ─── RÉSULTATS QUIZ ────────────────────── -->
+      <mat-card class="content-card quiz-result-card"
+                *ngIf="showQuizResult && quizResult">
+
+        <!-- Header résultat -->
+        <div class="result-header"
+             [ngStyle]="{'background': getScoreBg(quizResult.globalScore)}">
+          <div class="result-emoji">
+            {{ quizResult.qualified ? '🎉' : '😔' }}
+          </div>
+          <div class="result-score-big"
+               [ngStyle]="{'color': getScoreColor(quizResult.globalScore)}">
+            {{ quizResult.globalScore }}%
+          </div>
+          <div class="result-level"
+               [ngStyle]="{'color': getScoreColor(quizResult.globalScore)}">
+            {{ quizResult.globalLevel }}
+          </div>
+          <p class="result-message">{{ quizResult.message }}</p>
+        </div>
+
+        <mat-divider></mat-divider>
+
+        <!-- Scores détaillés -->
+        <div class="result-scores">
+          <div class="score-item">
+            <div class="score-circle cv-circle"
+                 [ngStyle]="{'background': getScoreBg(quizResult.cvScore),
+                             'color': getScoreColor(quizResult.cvScore)}">
+              {{ quizResult.cvScore }}%
+            </div>
+            <span>CV Score</span>
+          </div>
+          <div class="score-divider">+</div>
+          <div class="score-item">
+            <div class="score-circle quiz-circle"
+                 [ngStyle]="{'background': getScoreBg(quizResult.quizScore),
+                             'color': getScoreColor(quizResult.quizScore)}">
+              {{ quizResult.quizScore }}%
+            </div>
+            <span>Quiz Score</span>
+          </div>
+          <div class="score-divider">=</div>
+          <div class="score-item">
+            <div class="score-circle global-circle"
+                 [ngStyle]="{'background': getScoreBg(quizResult.globalScore),
+                             'color': getScoreColor(quizResult.globalScore)}">
+              {{ quizResult.globalScore }}%
+            </div>
+            <span>Global</span>
+          </div>
+        </div>
+
+        <mat-divider></mat-divider>
+
+        <!-- QCM résultats -->
+        <div class="quiz-results-detail">
+          <h4>
+            <mat-icon>quiz</mat-icon>
+            {{ quizResult.correctAnswers }}/{{ quizResult.totalQuestions }}
+            correct answers
+          </h4>
+          <div *ngFor="let qr of quizResult?.questionResults"
+
+               class="qr-item"
+               [class.correct]="qr.correct"
+               [class.incorrect]="!qr.correct">
+            <mat-icon>
+              {{ qr.correct ? 'check_circle' : 'cancel' }}
+            </mat-icon>
+            <span>Q{{ qr.number }}: Your answer:
+              <strong>{{ qr.selectedAnswer }}</strong>
+              <span *ngIf="!qr.correct">
+                — Correct: <strong>{{ qr.correctAnswer }}</strong>
+              </span>
+            </span>
+          </div>
+        </div>
+
+        <mat-divider></mat-divider>
+
+        <!-- Entretien planifié -->
+        <div class="interview-scheduled"
+             *ngIf="quizResult.qualified && quizResult.scheduledInterview">
+          <mat-icon>calendar_today</mat-icon>
+          <div>
+            <h4>Interview Scheduled!</h4>
+            <p>{{ quizResult.scheduledInterview | date:'dd MMM yyyy, HH:mm' }}</p>
+          </div>
+        </div>
+
+        <!-- Tips -->
+        <div class="quiz-tips" *ngIf="quizResult && quizResult.tips && quizResult.tips.length > 0">
+          <h4><mat-icon>lightbulb</mat-icon> Tips for you</h4>
+          <div *ngFor="let tip of quizResult.tips" class="tip-item">
+            {{ tip }}
+          </div>
+        </div>
+
+        <!-- Bouton fermer -->
+        <div class="result-actions">
+          <button mat-raised-button
+                  class="close-result-btn"
+                  (click)="closeQuizResult()">
+            <mat-icon>check</mat-icon>
+            Got it!
+          </button>
+        </div>
+
+      </mat-card>
+
+      <!-- Similar Offers -->
+      <mat-card class="content-card similar-card"
+                *ngIf="!loadingSimilar && similarOffers.length > 0">
+        <div class="card-header-custom">
+          <div class="card-icon similar-icon-wrap">
+            <mat-icon>auto_awesome</mat-icon>
+          </div>
+          <div>
+            <h2>Similar Opportunities</h2>
+            <p>{{ similarOffers.length }} offers matching your search</p>
+          </div>
+        </div>
+        <mat-divider></mat-divider>
+        <mat-card-content class="similar-content">
+          <div *ngFor="let offer of similarOffers; let i = index"
+               class="sim-item"
+               (click)="goToSimilarOffer(offer.offerId)">
+            <div class="sim-rank"
+                 [ngStyle]="{'background': getSimilarityBg(offer.similarityPercent),
+                             'color': getSimilarityColor(offer.similarityPercent)}">
+              {{ i + 1 }}
+            </div>
+            <div class="sim-info">
+              <h4>{{ offer.offerTitle }}</h4>
+              <div class="sim-meta">
+                <span>
+                  <mat-icon>business</mat-icon>{{ offer.offerCompany }}
+                </span>
+                <span *ngIf="offer.offerLocation">
+                  <mat-icon>location_on</mat-icon>{{ offer.offerLocation }}
+                </span>
+              </div>
+              <div class="sim-bottom">
+                <span class="sim-contract"
+                      [ngStyle]="{'background': getContractBg(offer.offerContractType),
+                                  'color': getContractColor(offer.offerContractType)}">
+                  {{ offer.offerContractType }}
+                </span>
+                <div class="sim-bar-wrap">
+                  <div class="sim-bar-track">
+                    <div class="sim-bar-fill"
+                         [style.width]="offer.similarityPercent + '%'"
+                         [ngStyle]="{'background': getSimilarityColor(offer.similarityPercent)}">
+                    </div>
+                  </div>
+                  <span class="sim-pct"
+                        [ngStyle]="{'color': getSimilarityColor(offer.similarityPercent)}">
+                    {{ offer.similarityPercent }}%
+                  </span>
+                </div>
+              </div>
+            </div>
+            <mat-icon class="sim-arrow">chevron_right</mat-icon>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <div *ngIf="loadingSimilar" class="sim-loading">
+        <mat-progress-spinner mode="indeterminate" diameter="28">
+        </mat-progress-spinner>
+        <span>Finding similar offers...</span>
+      </div>
+
+    </div>
+
+    <!-- ─── SIDEBAR ───────────────────────────── -->
+    <aside class="sidebar">
+      <mat-card class="sidebar-card">
+        <div class="sidebar-card-header">
+          <mat-icon>insights</mat-icon>
+          <h3>Job Insights</h3>
+        </div>
+        <mat-divider></mat-divider>
+        <mat-card-content class="insights-list">
+
+          <div class="insight-item">
+            <div class="insight-icon work">
+              <mat-icon>work_outline</mat-icon>
+            </div>
+            <div class="insight-info">
+              <span class="insight-label">Position</span>
+              <span class="insight-value">{{ jobOffer.title }}</span>
+            </div>
+          </div>
+
+          <div class="insight-item">
+            <div class="insight-icon company">
+              <mat-icon>business</mat-icon>
+            </div>
+            <div class="insight-info">
+              <span class="insight-label">Company</span>
+              <span class="insight-value">{{ jobOffer.company }}</span>
+            </div>
+          </div>
+
+          <div class="insight-item">
+            <div class="insight-icon location">
+              <mat-icon>location_on</mat-icon>
+            </div>
+            <div class="insight-info">
+              <span class="insight-label">Location</span>
+              <span class="insight-value">
+                {{ jobOffer.location || 'Not specified' }}
+              </span>
+            </div>
+          </div>
+
+          <div class="insight-item">
+            <div class="insight-icon contract">
+              <mat-icon>description</mat-icon>
+            </div>
+            <div class="insight-info">
+              <span class="insight-label">Contract Type</span>
+              <span class="insight-value">{{ jobOffer.contractType }}</span>
+            </div>
+          </div>
+
+          <div class="insight-item" *ngIf="jobOffer.salary">
+            <div class="insight-icon salary">
+              <mat-icon>payments</mat-icon>
+            </div>
+            <div class="insight-info">
+              <span class="insight-label">Salary</span>
+              <span class="insight-value">
+                {{ jobOffer.salary }} TND/year
+              </span>
+            </div>
+          </div>
+
+          <div class="insight-item" *ngIf="jobOffer.deadline">
+            <div class="insight-icon deadline">
+              <mat-icon>event</mat-icon>
+            </div>
+            <div class="insight-info">
+              <span class="insight-label">Deadline</span>
+              <span class="insight-value deadline-val">
+                {{ jobOffer.deadline | date:'dd MMM yyyy' }}
+              </span>
+            </div>
+          </div>
+
+        </mat-card-content>
+      </mat-card>
+
+      <div class="cta-card" *ngIf="!applicationSuccess">
+        <mat-icon>rocket_launch</mat-icon>
+        <h4>Ready to apply?</h4>
+        <p>Join other candidates and submit your application today</p>
+      </div>
+    </aside>
+
+  </div>
+</div>

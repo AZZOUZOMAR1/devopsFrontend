@@ -1,0 +1,217 @@
+<div class="jobs-management-container">
+  <div class="header">
+    <h1>
+      <mat-icon>work_outline</mat-icon>
+      Gestion des offres d'emploi
+    </h1>
+    <button mat-raised-button color="primary" (click)="openCreateForm()">
+      <mat-icon>add</mat-icon>
+      Nouvelle offre
+    </button>
+  </div>
+
+  <!-- Chargement -->
+  <div *ngIf="loading" class="loading">
+    <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+    <p>Chargement...</p>
+  </div>
+
+  <!-- Tableau des offres -->
+  <mat-card *ngIf="!loading && !showForm" class="table-card">
+    <mat-card-content>
+      <table mat-table [dataSource]="dataSource" class="mat-elevation-z0">
+        <ng-container matColumnDef="title">
+          <th mat-header-cell *matHeaderCellDef>Titre</th>
+          <td mat-cell *matCellDef="let row">{{ row.title }}</td>
+        </ng-container>
+        <ng-container matColumnDef="company">
+          <th mat-header-cell *matHeaderCellDef>Entreprise</th>
+          <td mat-cell *matCellDef="let row">{{ row.company }}</td>
+        </ng-container>
+        <ng-container matColumnDef="contractType">
+          <th mat-header-cell *matHeaderCellDef>Type de contrat</th>
+          <td mat-cell *matCellDef="let row">{{ row.contractType }}</td>
+        </ng-container>
+        <ng-container matColumnDef="location">
+          <th mat-header-cell *matHeaderCellDef>Lieu</th>
+          <td mat-cell *matCellDef="let row">{{ row.location }}</td>
+        </ng-container>
+        <ng-container matColumnDef="salary">
+          <th mat-header-cell *matHeaderCellDef>Salaire</th>
+          <td mat-cell *matCellDef="let row">{{ row.salary != null ? (row.salary | number) + ' €' : '-' }}</td>
+        </ng-container>
+
+        <!-- ✅ Colonne Vues -->
+<ng-container matColumnDef="views">
+  <th mat-header-cell *matHeaderCellDef>
+    <div class="views-header">
+      <mat-icon>visibility</mat-icon>
+      Vues
+    </div>
+  </th>
+  <td mat-cell *matCellDef="let row">
+    <div class="views-cell">
+      <div class="views-badge"
+           [ngStyle]="{'background': getViewsBg(row.viewCount),
+                       'color': getViewsColor(row.viewCount)}">
+        <mat-icon>visibility</mat-icon>
+        {{ row.viewCount || 0 }}
+      </div>
+      <div class="views-bar-track">
+        <div class="views-bar-fill"
+             [style.width]="getViewsBarWidth(row.viewCount) + '%'"
+             [ngStyle]="{'background': getViewsColor(row.viewCount)}">
+        </div>
+      </div>
+    </div>
+  </td>
+</ng-container>
+        <ng-container matColumnDef="active">
+          <th mat-header-cell *matHeaderCellDef>Active</th>
+          <td mat-cell *matCellDef="let row">
+            <mat-checkbox [checked]="row.active" (change)="toggleActive(row)"></mat-checkbox>
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef>Actions</th>
+          <td mat-cell *matCellDef="let row">
+            <button mat-icon-button (click)="openEditForm(row)" matTooltip="Modifier">
+              <mat-icon>edit</mat-icon>
+            </button>
+            <button mat-icon-button color="warn" (click)="deleteJobOffer(row.id!)" matTooltip="Supprimer">
+              <mat-icon>delete</mat-icon>
+            </button>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+
+        <tr class="mat-row" *matNoDataRow>
+          <td class="mat-cell" [attr.colspan]="displayedColumns.length">Aucune offre.</td>
+        </tr>
+      </table>
+      <mat-paginator [pageSizeOptions]="[5, 10, 25, 50]" [pageSize]="10" showFirstLastButtons></mat-paginator>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Formulaire création / édition avec validation ✅ -->
+  <mat-card *ngIf="showForm" class="form-card">
+    <mat-card-header>
+      <mat-card-title>{{ isEditMode ? 'Modifier l\'offre' : 'Nouvelle offre' }}</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <form [formGroup]="jobForm" (ngSubmit)="saveJobOffer()">
+        
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Titre</mat-label>
+          <input matInput formControlName="title" />
+          <mat-error *ngIf="jobForm.get('title')?.invalid">
+            {{ getErrorMessage('title') }}
+          </mat-error>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Entreprise</mat-label>
+          <input matInput formControlName="company" />
+          <mat-error *ngIf="jobForm.get('company')?.invalid">
+            {{ getErrorMessage('company') }}
+          </mat-error>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Type de contrat</mat-label>
+          <mat-select formControlName="contractType">
+            <mat-option *ngFor="let type of contractTypes" [value]="type">{{ type }}</mat-option>
+          </mat-select>
+          <mat-error *ngIf="jobForm.get('contractType')?.invalid">
+            {{ getErrorMessage('contractType') }}
+          </mat-error>
+        </mat-form-field>
+        <!-- Champ Lieu avec autocomplétion -->
+<div class="location-field">
+  <mat-form-field appearance="outline" class="full-width">
+    <mat-label>Lieu</mat-label>
+    <mat-icon matPrefix>location_on</mat-icon>
+    <input matInput 
+           formControlName="location"
+           (input)="onLocationInput($event)"
+           (blur)="hideSuggestions()"
+           placeholder="Ex: Tunis, Paris..."
+           autocomplete="off"/>
+    <mat-error *ngIf="jobForm.get('location')?.invalid">
+      {{ getErrorMessage('location') }}
+    </mat-error>
+  </mat-form-field>
+
+  <!-- Suggestions -->
+  <div class="suggestions-panel" *ngIf="showSuggestions">
+    <div *ngFor="let suggestion of locationSuggestions"
+         class="suggestion-item"
+         (click)="selectLocation(suggestion)">
+      <mat-icon>location_on</mat-icon>
+      <span>{{ suggestion.display_name.split(',').slice(0,3).join(',') }}</span>
+    </div>
+  </div>
+</div>
+
+    
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Salaire (TND/an)</mat-label>
+          <input matInput type="number" formControlName="salary" placeholder="Ex: 35000" />
+          <mat-error *ngIf="jobForm.get('salary')?.invalid">
+            {{ getErrorMessage('salary') }}
+          </mat-error>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Description</mat-label>
+          <textarea matInput formControlName="description" rows="4"></textarea>
+          <mat-error *ngIf="jobForm.get('description')?.invalid">
+            {{ getErrorMessage('description') }}
+          </mat-error>
+        </mat-form-field>
+
+        <!-- ✅ Date d'expiration optionnelle -->
+<div class="expiration-section">
+  <div class="expiration-header">
+    <mat-icon>schedule</mat-icon>
+    <span>Date d'expiration</span>
+    <span class="optional-badge">Optionnel</span>
+  </div>
+  <p class="expiration-hint">
+    Si vous ne renseignez pas de date, l'offre restera active indéfiniment.
+  </p>
+  <mat-form-field appearance="outline" class="full-width">
+    <mat-label>Date d'expiration</mat-label>
+    <mat-icon matPrefix>event</mat-icon>
+    <input matInput 
+           type="datetime-local"
+           formControlName="expirationDate"/>
+    <mat-hint>Laissez vide si l'offre n'expire pas</mat-hint>
+  </mat-form-field>
+
+  <!-- ✅ Bouton effacer la date -->
+  <button mat-button 
+          type="button"
+          class="clear-date-btn"
+          *ngIf="jobForm.get('expirationDate')?.value"
+          (click)="jobForm.patchValue({expirationDate: null})">
+    <mat-icon>clear</mat-icon>
+    Supprimer la date d'expiration
+  </button>
+</div>
+
+        <mat-checkbox formControlName="active">Offre active (visible)</mat-checkbox>
+
+        <div class="form-actions">
+          <button mat-button type="button" (click)="closeForm()">Annuler</button>
+          <button mat-raised-button color="primary" type="submit" [disabled]="jobForm.invalid">
+            Enregistrer
+          </button>
+        </div>
+      </form>
+    </mat-card-content>
+  </mat-card>
+</div>

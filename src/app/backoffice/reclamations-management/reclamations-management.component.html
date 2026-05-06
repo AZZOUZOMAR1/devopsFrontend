@@ -1,0 +1,209 @@
+<div class="reclamations-management">
+  <div class="page-header">
+    <div class="header-content">
+      <div class="header-titles">
+        <h1 class="title-with-icon"><mat-icon>admin_panel_settings</mat-icon>Reclamation Management</h1>
+        <p class="header-subtitle">Filter by ML category and sort by priority or ML label. Pagination on the server. Stats reflect all reclamations. The table refreshes when students submit (other tabs) and every 2 minutes as backup.</p>
+      </div>
+      <button type="button" class="btn refresh-btn btn-with-icon" (click)="loadReclamations(false)" [disabled]="loading" title="Reload list now">
+        <mat-icon>refresh</mat-icon>
+        Refresh
+      </button>
+    </div>
+  </div>
+
+  <div class="alert error" *ngIf="errorMessage">{{ errorMessage }}</div>
+  <div class="alert success" *ngIf="successMessage">{{ successMessage }}</div>
+
+  <div class="stats-grid" *ngIf="!loading">
+    <div class="stat-card stat-card--progress">
+      <div class="stat-icon"><mat-icon>hourglass_top</mat-icon></div>
+      <div class="stat-content">
+        <div class="stat-label">In Progress</div>
+        <div class="stat-value">{{ inProgressTotal }}</div>
+        <div class="stat-percent">{{ inProgressPercent }}%</div>
+      </div>
+    </div>
+    <div class="stat-card stat-card--processed">
+      <div class="stat-icon"><mat-icon>verified</mat-icon></div>
+      <div class="stat-content">
+        <div class="stat-label">Processed</div>
+        <div class="stat-value">{{ processedTotal }}</div>
+        <div class="stat-percent">{{ processedPercent }}%</div>
+      </div>
+    </div>
+    <div class="stat-card stat-card--pending">
+      <div class="stat-icon"><mat-icon>schedule</mat-icon></div>
+      <div class="stat-content">
+        <div class="stat-label">Pending</div>
+        <div class="stat-value">{{ pendingTotal }}</div>
+        <div class="stat-percent">{{ pendingPercent }}%</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="stats-overview" *ngIf="!loading">
+    <div class="overview-header">
+      <span>Total reclamations</span>
+      <strong>{{ totalElements }}</strong>
+    </div>
+    <div class="overview-bars">
+      <div class="bar bar--processed" [style.width.%]="processedPercent"></div>
+      <div class="bar bar--progress" [style.width.%]="inProgressPercent"></div>
+      <div class="bar bar--pending" [style.width.%]="pendingPercent"></div>
+    </div>
+    <div class="overview-legend">
+      <span><i class="dot dot--processed"></i>Processed</span>
+      <span><i class="dot dot--progress"></i>In Progress</span>
+      <span><i class="dot dot--pending"></i>Pending</span>
+    </div>
+  </div>
+
+  <div class="admin-filters card card--filters">
+    <label class="filter-field">
+      <span class="filter-label">ML category</span>
+      <select [(ngModel)]="mlCategoryFilter" (ngModelChange)="onMlFilterOrSortChange()" class="filter-select">
+        <option value="">All categories</option>
+        <option *ngFor="let c of mlCategoryOptions" [value]="c">{{ c }}</option>
+      </select>
+    </label>
+    <label class="filter-field">
+      <span class="filter-label">Sort</span>
+      <select [(ngModel)]="adminSort" (ngModelChange)="onMlFilterOrSortChange()" class="filter-select">
+        <option value="priority">By priority</option>
+        <option value="mlCategory">By ML category (A–Z)</option>
+      </select>
+    </label>
+    <div class="filter-actions">
+      <button
+        type="button"
+        class="btn secondary btn-with-icon backfill-ml-btn"
+        (click)="runBackfillMl()"
+        [disabled]="backfillMlLoading || loading"
+        title="Fill ML category for older tickets (Python service must be running)"
+      >
+        <mat-icon>auto_fix_high</mat-icon>
+        {{ backfillMlLoading ? 'Running…' : 'Fill ML categories' }}
+      </button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="loading" *ngIf="loading">Loading...</div>
+
+    <table *ngIf="!loading && reclamations.length > 0">
+      <thead>
+        <tr>
+          <th>Subject</th>
+          <th>Description</th>
+          <th>Priority</th>
+          <th>Sentiment</th>
+          <th>ML category</th>
+          <th>Status</th>
+          <th>Moderation</th>
+          <th>Admin Response</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <ng-container *ngFor="let r of reclamations">
+          <tr>
+            <td>{{ r.sujet }}</td>
+            <td>{{ r.description }}</td>
+            <td class="cell-priority">
+              <span [ngClass]="urgencyBadgeClass(r.urgencyLevel)">{{ r.urgencyLevel || '—' }}</span>
+              <span class="priority-score" *ngIf="r.priorityScore != null">{{ r.priorityScore }}/100</span>
+            </td>
+            <td class="cell-sentiment">
+              <div class="emotion-chips">
+                <span class="emotion-chip" *ngFor="let e of emotionChips(r.emotionTags)">{{ e }}</span>
+              </div>
+              <div class="sentiment-hint" *ngIf="r.sentimentLabel" [title]="r.sentimentLabel">{{ r.sentimentLabel }}</div>
+            </td>
+            <td class="cell-ml-category">
+              <span class="ml-category-badge" *ngIf="r.categorieMl">{{ r.categorieMl }}</span>
+              <span *ngIf="!r.categorieMl" class="ml-category-empty">—</span>
+            </td>
+            <td>
+              <span class="status"
+                    [ngClass]="{
+                      'status--processed': r.statut === 'RESOLUE',
+                      'status--progress': r.statut === 'EN_COURS' || r.statut === 'IN_PROGRESS',
+                      'status--pending': r.statut === 'EN_ATTENTE'
+                    }">
+                {{ r.statut }}
+              </span>
+            </td>
+            <td>
+              <span class="status status--pending" *ngIf="r.containsBadWords && !r.studentReported">Needs Review</span>
+              <span class="status status--reported" *ngIf="r.studentReported">Reported</span>
+              <span *ngIf="!r.studentReported && !r.containsBadWords">-</span>
+            </td>
+            <td>{{ r.reponseAdmin || '-' }}</td>
+            <td>
+              <button type="button" class="btn small primary btn-with-icon" (click)="startTreatment(r)">
+                <mat-icon>edit_note</mat-icon>
+                Process
+              </button>
+            </td>
+          </tr>
+          <tr *ngIf="activeId === r.id">
+            <td colspan="9">
+              <div class="treatment-box">
+                <div class="form-group">
+                  <label>Status</label>
+                  <select [(ngModel)]="responseForm.statut">
+                    <option value="IN_PROGRESS">IN_PROGRESS</option>
+                    <option value="EN_COURS">EN_COURS</option>
+                    <option value="RESOLUE">RESOLUE</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Admin Response</label>
+                  <textarea rows="3" [(ngModel)]="responseForm.reponseAdmin" placeholder="Write a response for the student"></textarea>
+                </div>
+                <div class="form-group">
+                  <label>Report Reason (for bad words or abuse)</label>
+                  <textarea rows="2" [(ngModel)]="reportReason" placeholder="Write why you report this student"></textarea>
+                </div>
+                <div class="actions">
+                  <button type="button" class="btn primary btn-with-icon" (click)="submitTreatment(r)">
+                    <mat-icon>outgoing_mail</mat-icon>
+                    Send Response
+                  </button>
+                  <button type="button" class="btn warning btn-with-icon" (click)="reportStudent(r)">
+                    <mat-icon>gavel</mat-icon>
+                    Report Student
+                  </button>
+                  <button type="button" class="btn success btn-with-icon" *ngIf="r.studentReported" (click)="unblockStudent(r)">
+                    <mat-icon>lock_open</mat-icon>
+                    Unblock Student
+                  </button>
+                  <button type="button" class="btn secondary btn-with-icon" (click)="cancelTreatment()">
+                    <mat-icon>close</mat-icon>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </td>
+          </tr>
+        </ng-container>
+      </tbody>
+    </table>
+
+    <div class="empty" *ngIf="!loading && reclamations.length === 0">
+      No reclamations available.
+    </div>
+
+    <mat-paginator
+      *ngIf="!loading && totalElements > 0"
+      class="reclamations-paginator"
+      [length]="totalElements"
+      [pageIndex]="pageIndex"
+      [pageSize]="pageSize"
+      [pageSizeOptions]="pageSizeOptions"
+      [showFirstLastButtons]="true"
+      (page)="onPageChange($event)"
+    ></mat-paginator>
+  </div>
+</div>

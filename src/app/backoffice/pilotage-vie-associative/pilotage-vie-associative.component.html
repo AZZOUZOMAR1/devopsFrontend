@@ -1,0 +1,109 @@
+<div class="pv-page">
+  <div class="pv-bg" aria-hidden="true"></div>
+
+  <header class="pv-hero">
+    <div class="pv-hero__badge">
+      <mat-icon>monitoring</mat-icon>
+      <span>Administration</span>
+    </div>
+    <h1 class="pv-hero__title">Pilotage <em>vie associative</em></h1>
+    <p class="pv-hero__lead">Vue consolidée des clubs, événements, adhésions et alertes pour prioriser vos actions.</p>
+    <button mat-stroked-button class="pv-refresh" (click)="load()" [disabled]="loading">
+      <mat-icon>refresh</mat-icon>
+      Actualiser
+    </button>
+  </header>
+
+  <mat-progress-bar *ngIf="loading" mode="indeterminate" class="pv-progress"></mat-progress-bar>
+
+  <div class="pv-error" *ngIf="!loading && loadError">
+    <mat-icon>cloud_off</mat-icon>
+    <p>Impossible de charger les indicateurs. Vérifiez le Gateway et les services Club / Événements.</p>
+    <button mat-flat-button color="primary" (click)="load()">Réessayer</button>
+  </div>
+
+  <ng-container *ngIf="!loading && !loadError">
+    <div class="pv-kpis">
+      <div class="pv-kpi pv-kpi--clubs">
+        <mat-icon>groups</mat-icon>
+        <div>
+          <span class="pv-kpi__label">Clubs actifs</span>
+          <strong class="pv-kpi__value">{{ clubsActifs }}</strong>
+          <span class="pv-kpi__hint" *ngIf="clubsPending">{{ clubsPending }} en attente</span>
+        </div>
+      </div>
+      <div class="pv-kpi pv-kpi--events">
+        <mat-icon>event_available</mat-icon>
+        <div>
+          <span class="pv-kpi__label">Événements</span>
+          <strong class="pv-kpi__value">{{ evenements.length }}</strong>
+          <span class="pv-kpi__hint">{{ eventsWithInscriptions }} avec inscrits</span>
+        </div>
+      </div>
+      <div class="pv-kpi pv-kpi--engage">
+        <mat-icon>trending_up</mat-icon>
+        <div>
+          <span class="pv-kpi__label">Taux d’engagement événements</span>
+          <strong class="pv-kpi__value">{{ tauxEvenementsEngages }}%</strong>
+          <span class="pv-kpi__hint">Événements ayant ≥1 inscription</span>
+        </div>
+      </div>
+      <div class="pv-kpi pv-kpi--membres">
+        <mat-icon>person_add_alt</mat-icon>
+        <div>
+          <span class="pv-kpi__label">Membres & inscriptions</span>
+          <strong class="pv-kpi__value">{{ totalMembres }}</strong>
+          <span class="pv-kpi__hint">~{{ engagementMoyenMembres }} membres / club actif · {{ totalInscriptions }} inscriptions</span>
+        </div>
+      </div>
+    </div>
+
+    <section class="pv-alerts" *ngIf="alerts.length">
+      <h2><mat-icon>notifications_active</mat-icon> Alertes & signaux faibles</h2>
+      <div class="pv-alert-list">
+        <div class="pv-alert" *ngFor="let a of alerts" [ngClass]="'pv-alert--' + a.severity">
+          <mat-icon>{{ a.severity === 'danger' ? 'error' : a.severity === 'warning' ? 'warning_amber' : 'info' }}</mat-icon>
+          <div>
+            <strong>{{ a.title }}</strong>
+            <p>{{ a.detail }}</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="pv-alerts pv-alerts--empty" *ngIf="!alerts.length">
+      <mat-icon>check_circle</mat-icon>
+      <p>Aucune alerte critique pour l’instant — la vie associative semble suivie.</p>
+    </section>
+
+    <section class="pv-table-section">
+      <h2><mat-icon>table_chart</mat-icon> Synthèse par club</h2>
+      <div class="pv-table-wrap">
+        <table class="pv-table">
+          <thead>
+            <tr>
+              <th>Club</th>
+              <th>Statut</th>
+              <th>Membres</th>
+              <th>Événements</th>
+              <th>Dernière activité</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let row of clubRows; trackBy: trackClub">
+              <td><strong>{{ row.club.nom }}</strong></td>
+              <td><span class="pv-statut" [class.pv-statut--active]="(row.club.statut || '').toLowerCase() === 'active'">{{ row.club.statut || '—' }}</span></td>
+              <td>{{ row.membres }}</td>
+              <td>{{ row.nbEvenements }}</td>
+              <td>
+                <span *ngIf="row.derniereActivite as d">{{ d }}</span>
+                <span class="pv-muted" *ngIf="row.joursSansActivite != null && row.joursSansActivite > 0"> ({{ row.joursSansActivite }} j.)</span>
+                <span class="pv-muted" *ngIf="!row.derniereActivite">—</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </ng-container>
+</div>

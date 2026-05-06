@@ -1,0 +1,232 @@
+<div class="clubs-management clubs-management--v2">
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="header-content">
+      <div class="title-row">
+        <span class="title-pill"><mat-icon>hub</mat-icon> Administration</span>
+        <h1>Gestion des clubs</h1>
+      </div>
+      <p class="header-subtitle">Créez, suivez les responsables par nom et pilotez la vie associative</p>
+    </div>
+    <div class="header-actions">
+      <button mat-stroked-button class="action-btn chat" (click)="toggleClubChat()" matTooltip="Assistant clubs (IA locale)">
+        <mat-icon>{{ chatOpen ? 'close' : 'smart_toy' }}</mat-icon>
+        <span>Chatbot clubs</span>
+      </button>
+      <button mat-raised-button class="action-btn primary" (click)="addClub()">
+        <mat-icon>group_add</mat-icon>
+        <span>Créer un club</span>
+      </button>
+    </div>
+  </div>
+
+  <section class="club-chat-panel" *ngIf="chatOpen">
+    <header class="club-chat-panel__head">
+      <mat-icon>auto_awesome</mat-icon>
+      <div>
+        <h2>Assistant Club Management</h2>
+        <p>Analyse basée sur les données clubs en temps réel via Ollama.</p>
+      </div>
+      <button mat-icon-button type="button" (click)="clearClubChat()" matTooltip="Effacer la conversation">
+        <mat-icon>delete_sweep</mat-icon>
+      </button>
+    </header>
+
+    <div class="club-chat-suggestions">
+      <button mat-stroked-button type="button" class="suggestion-chip" *ngFor="let idea of chatIdeas" (click)="askClubAssistant(idea)">
+        {{ idea }}
+      </button>
+    </div>
+
+    <div class="club-chat-thread">
+      <p class="club-chat-empty" *ngIf="chatTurns.length === 0 && !chatLoading">Posez une question sur les clubs.</p>
+      <div *ngFor="let t of chatTurns" class="club-chat-bubble" [class.club-chat-bubble--user]="t.role === 'user'">
+        <span class="club-chat-bubble__role">{{ t.role === 'user' ? 'Vous' : 'Assistant' }}</span>
+        <p>{{ t.text }}</p>
+      </div>
+      <div class="club-chat-typing" *ngIf="chatLoading">
+        <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+      </div>
+    </div>
+
+    <div class="club-chat-compose">
+      <mat-form-field appearance="outline" class="club-chat-field" subscriptSizing="dynamic">
+        <mat-label>Votre question</mat-label>
+        <textarea matInput rows="2" maxlength="500" [(ngModel)]="chatInput" (keydown.control.enter)="askClubAssistant()"></textarea>
+      </mat-form-field>
+      <button mat-flat-button color="primary" type="button" class="club-chat-send" (click)="askClubAssistant()" [disabled]="chatLoading">
+        <mat-icon>send</mat-icon>
+        Envoyer
+      </button>
+    </div>
+  </section>
+
+  <!-- Loading State -->
+  <div class="loading-container" *ngIf="loading">
+    <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="stats-row" *ngIf="!loading">
+    <div class="mini-stat-card">
+      <div class="mini-stat-icon purple">
+        <mat-icon>groups</mat-icon>
+      </div>
+      <div class="mini-stat-info">
+        <span class="mini-stat-value">{{ clubs.length }}</span>
+        <span class="mini-stat-label">Total</span>
+      </div>
+    </div>
+    <div class="mini-stat-card">
+      <div class="mini-stat-icon green">
+        <mat-icon>check_circle</mat-icon>
+      </div>
+      <div class="mini-stat-info">
+        <span class="mini-stat-value">{{ activeCount }}</span>
+        <span class="mini-stat-label">Actifs</span>
+      </div>
+    </div>
+    <div class="mini-stat-card">
+      <div class="mini-stat-icon orange">
+        <mat-icon>pending</mat-icon>
+      </div>
+      <div class="mini-stat-info">
+        <span class="mini-stat-value">{{ pendingCount }}</span>
+        <span class="mini-stat-label">En attente</span>
+      </div>
+    </div>
+    <div class="mini-stat-card">
+      <div class="mini-stat-icon blue">
+        <mat-icon>block</mat-icon>
+      </div>
+      <div class="mini-stat-info">
+        <span class="mini-stat-value">{{ inactiveCount }}</span>
+        <span class="mini-stat-label">Inactifs</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters Section -->
+  <div class="filters-section" *ngIf="!loading">
+    <div class="search-container">
+      <mat-icon class="search-icon">search</mat-icon>
+      <input 
+        type="text" 
+        placeholder="Nom, description ou nom du responsable…" 
+        class="search-input"
+        [(ngModel)]="searchTerm"
+        (input)="onSearch()">
+    </div>
+    
+    <div class="filter-controls">
+      <mat-form-field appearance="outline" class="filter-field">
+        <mat-label>Type</mat-label>
+        <mat-select [(ngModel)]="selectedType" (selectionChange)="onTypeChange()">
+          <mat-option value="all">Tous</mat-option>
+          <mat-option *ngFor="let type of getUniqueTypes()" [value]="type">{{ type }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+      
+      <mat-form-field appearance="outline" class="filter-field">
+        <mat-label>Status</mat-label>
+        <mat-select [(ngModel)]="selectedStatus" (selectionChange)="onStatusChange()">
+          <mat-option value="all">Tous</mat-option>
+          <mat-option value="active">Actif</mat-option>
+          <mat-option value="inactive">Inactif</mat-option>
+          <mat-option value="pending">En attente</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+  </div>
+
+  <!-- Clubs Grid -->
+  <div class="clubs-grid" *ngIf="!loading">
+    <div class="club-card club-card--modern" *ngFor="let club of paginatedClubs">
+      <div class="club-card__accent"></div>
+      <div class="club-header">
+        <div class="club-avatar">
+          <img [src]="club.image || 'https://via.placeholder.com/100x100/667eea/ffffff?text=C'" [alt]="club.nom">
+        </div>
+        <span [class]="getStatusClass(club.statut || '')">{{ club.statut || 'N/A' }}</span>
+      </div>
+      <div class="club-content">
+        <h3>{{ club.nom }}</h3>
+        <p class="club-description" *ngIf="club.description">{{ club.description }}</p>
+        
+        <div class="club-avis-row" *ngIf="getAvisForClub(club) as avis">
+          <div class="avis-summary">
+            <mat-icon class="avis-star">star</mat-icon>
+            <span class="avis-moyenne">{{ formatMoyenne(avis.moyenne) }}</span>
+            <span class="avis-count">({{ avis.nombreAvis }} avis)</span>
+          </div>
+          <button mat-stroked-button type="button" class="avis-detail-btn" (click)="openAvisDialog(club, $event)">
+            <mat-icon>visibility</mat-icon>
+            Voir les avis
+          </button>
+        </div>
+        <p class="no-avis" *ngIf="!getAvisForClub(club)">Pas encore d’avis</p>
+
+        <div class="club-meta">
+          <div class="meta-item" *ngIf="club.type">
+            <mat-icon>category</mat-icon>
+            <span>{{ club.type }}</span>
+          </div>
+          <div class="meta-item meta-item--resp" *ngIf="club.idResponsable !== undefined && club.idResponsable !== null">
+            <mat-icon>badge</mat-icon>
+            <div class="meta-resp">
+              <span class="meta-resp__lbl">Responsable</span>
+              <span class="meta-resp__name" *ngIf="getResponsableNom(club) as nom">{{ nom }}</span>
+              <span class="meta-resp__pending" *ngIf="!getResponsableNom(club)">Chargement…</span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="club-stats">
+          <div class="stat">
+            <span class="stat-value">{{ (club.dateCreation || '') | date:'MMM yyyy' }}</span>
+            <span class="stat-label">Créé</span>
+          </div>
+        </div>
+        
+        <div class="club-actions">
+          <button mat-button class="view-btn" (click)="viewClub(club)">
+            <mat-icon>visibility</mat-icon>
+            Voir
+          </button>
+          <button mat-stroked-button color="primary" class="event-for-club-btn" (click)="createEventForClub(club)" matTooltip="Organiser un événement pour ce club">
+            <mat-icon>event</mat-icon>
+            Événement
+          </button>
+          <button mat-icon-button class="action-icon edit" (click)="editClub(club)" matTooltip="Edit">
+            <mat-icon>edit</mat-icon>
+          </button>
+          <button mat-icon-button class="action-icon delete" (click)="deleteClub(club)" matTooltip="Delete">
+            <mat-icon>delete</mat-icon>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <mat-paginator
+    *ngIf="!loading && filteredClubs.length > 0"
+    class="clubs-paginator"
+    [length]="filteredClubs.length"
+    [pageSize]="pageSize"
+    [pageIndex]="pageIndex"
+    [pageSizeOptions]="pageSizeOptions"
+    [showFirstLastButtons]="true"
+    (page)="onPageChange($event)">
+  </mat-paginator>
+
+  <!-- Empty State -->
+  <div class="empty-state" *ngIf="!loading && filteredClubs.length === 0">
+    <mat-icon>groups</mat-icon>
+    <h3>Aucun club trouvé</h3>
+    <p>Essayez de modifier vos critères</p>
+    <button mat-raised-button class="action-btn primary" (click)="addClub()">
+      <mat-icon>group_add</mat-icon>
+      Créer votre premier club
+    </button>
+  </div>
+</div>

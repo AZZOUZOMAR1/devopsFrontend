@@ -1,0 +1,121 @@
+<!-- ✅ Bouton flottant -->
+<div class="chatbot-fab" (click)="toggleChat()" [class.open]="isOpen">
+  <mat-icon *ngIf="!isOpen">chat</mat-icon>
+  <mat-icon *ngIf="isOpen">close</mat-icon>
+  <span class="fab-badge" *ngIf="!isOpen">1</span>
+</div>
+
+<!-- ✅ Fenêtre chatbot -->
+<div class="chatbot-window" [class.open]="isOpen">
+
+  <!-- Header -->
+  <div class="chat-header">
+    <div class="chat-header-avatar">
+      <mat-icon>smart_toy</mat-icon>
+    </div>
+    <div class="chat-header-info">
+      <h4>Recruitment Assistant</h4>
+      <span class="online-dot"></span>
+      <span class="online-text">Online</span>
+    </div>
+    <button mat-icon-button (click)="toggleChat()" class="close-chat">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <!-- Messages -->
+  <div class="chat-messages" #messagesContainer>
+
+    <div *ngFor="let msg of messages"
+         class="message-wrapper"
+         [class.user-wrapper]="!msg.isBot"
+         [class.bot-wrapper]="msg.isBot">
+
+      <!-- Bot avatar -->
+      <div class="bot-avatar" *ngIf="msg.isBot">
+        <mat-icon>smart_toy</mat-icon>
+      </div>
+
+      <div class="message-content">
+        <!-- Bubble -->
+        <div class="message-bubble"
+             [class.user-bubble]="!msg.isBot"
+             [class.bot-bubble]="msg.isBot">
+          <p [innerHTML]="msg.text.replace('\n', '<br>')"></p>
+        </div>
+
+        <!-- Time -->
+        <span class="message-time">{{ formatTime(msg.timestamp) }}</span>
+
+        <!-- Job suggestions -->
+        <div *ngIf="msg.suggestions && msg.suggestions.length > 0"
+             class="suggestions-list">
+          <div *ngFor="let offer of msg.suggestions"
+               class="suggestion-card"
+               (click)="goToOffer(offer.id)">
+            <div class="suggestion-top">
+              <div class="suggestion-info">
+                <h5>{{ offer.title }}</h5>
+                <p>
+                  <mat-icon>business</mat-icon>{{ offer.company }}
+                </p>
+                <p *ngIf="offer.location">
+                  <mat-icon>location_on</mat-icon>{{ offer.location }}
+                </p>
+              </div>
+              <div class="suggestion-match"
+                   [ngStyle]="{'background': getMatchBg(offer.matchPercent),
+                               'color': getMatchColor(offer.matchPercent)}">
+                {{ offer.matchPercent }}%
+              </div>
+            </div>
+            <div class="suggestion-bottom">
+              <span class="suggestion-contract">{{ offer.contractType }}</span>
+              <span class="suggestion-salary" *ngIf="offer.salary">
+                {{ offer.salary }} TND
+              </span>
+              <span class="suggestion-apply">Apply →</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Typing indicator -->
+    <div class="typing-indicator" *ngIf="isTyping">
+      <div class="bot-avatar">
+        <mat-icon>smart_toy</mat-icon>
+      </div>
+      <div class="typing-bubble">
+        <span></span><span></span><span></span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Quick replies -->
+  <div class="quick-replies" *ngIf="messages.length <= 1">
+    <button *ngFor="let qr of quickReplies"
+            class="quick-reply-btn"
+            (click)="sendQuickReply(qr.text)">
+      {{ qr.label }}
+    </button>
+  </div>
+
+  <!-- Input -->
+  <div class="chat-input-area">
+    <input type="text"
+           class="chat-input"
+           [(ngModel)]="inputText"
+           (keydown)="onKeydown($event)"
+           placeholder="Type a message..."
+           [disabled]="isTyping"/>
+    <button class="send-btn"
+            (click)="sendMessage()"
+            [disabled]="!inputText.trim() || isTyping">
+      <mat-icon>send</mat-icon>
+    </button>
+  </div>
+ 
+</div>
+ 

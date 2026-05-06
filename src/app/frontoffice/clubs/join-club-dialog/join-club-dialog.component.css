@@ -1,0 +1,65 @@
+.join-club-dialog {
+  min-width: 400px;
+}
+
+.dialog-intro {
+  margin-bottom: 20px;
+  color: #666;
+  font-size: 14px;
+}
+
+.form-row {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.half-width {
+  flex: 1;
+}
+
+.full-width {
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+.score-result {
+  text-align: center;
+  padding: 24px;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+  border-radius: 12px;
+  margin-bottom: 16px;
+}
+
+.score-icon {
+  font-size: 48px;
+  width: 48px;
+  height: 48px;
+  color: #667eea;
+  margin-bottom: 8px;
+}
+
+.score-result h3 {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  color: #333;
+}
+
+.score-value {
+  font-size: 32px;
+  font-weight: 700;
+  color: #667eea;
+  margin: 0 0 12px 0;
+}
+
+.score-message {
+  font-size: 14px;
+  color: #666;
+  margin: 0;
+}
+
+mat-dialog-actions button mat-spinner {
+  display: inline-block;
+  margin-right: 8px;
+  vertical-align: middle;
+}

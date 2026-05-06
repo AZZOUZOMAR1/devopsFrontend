@@ -1,0 +1,7 @@
+<div class="toast-container">
+  <div *ngFor="let t of toasts" class="toast toast-{{ t.type }}" [@slideIn]
+       (click)="close(t.id)">
+    <mat-icon class="toast-icon">{{ t.icon }}</mat-icon>
+    <span class="toast-message">{{ t.message }}</span>
+  </div>
+</div>

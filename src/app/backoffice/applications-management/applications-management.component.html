@@ -1,0 +1,982 @@
+<div class="apps-container" [class.panel-open]="showSidePanel">
+
+  <!-- ─── HEADER ──────────────────────────────── -->
+  <div class="page-header">
+    <div class="header-left">
+      <div class="header-icon">
+        <mat-icon>people</mat-icon>
+      </div>
+      <div>
+        <h1>Applications Management</h1>
+        <p>Monitor and manage all candidate applications</p>
+      </div>
+    </div>
+    <span class="total-badge">{{ filteredApplications.length }} application(s)</span>
+  </div>
+
+  <!-- ─── CV SCREENING ──────────────────────────── -->
+  <mat-card class="screening-card">
+    <div class="screening-header" (click)="toggleScreening()">
+      <div class="screening-header-left">
+        <div class="screening-icon">
+          <mat-icon>manage_search</mat-icon>
+        </div>
+        <div>
+          <h2>CV Screening — Smart Recommendations</h2>
+          <p>Analyze all CVs and find the best candidates automatically</p>
+        </div>
+      </div>
+      <mat-icon class="toggle-icon">
+        {{ showScreening ? 'expand_less' : 'expand_more' }}
+      </mat-icon>
+    </div>
+
+    <div *ngIf="showScreening">
+      <mat-divider></mat-divider>
+      <div class="screening-body">
+        <div class="criteria-grid">
+
+          <mat-form-field appearance="outline" class="criteria-field">
+            <mat-label>Job Offer</mat-label>
+            <mat-icon matPrefix>work</mat-icon>
+            <mat-select [(ngModel)]="screeningRequest.jobOfferId">
+              <mat-option [value]="null">All offers</mat-option>
+              <mat-option *ngFor="let offer of jobOffers" [value]="offer.id">
+                {{ offer.title }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="criteria-field">
+            <mat-label>Preferred Location</mat-label>
+            <mat-icon matPrefix>location_on</mat-icon>
+            <input matInput [(ngModel)]="screeningRequest.preferredLocation"
+                   placeholder="Ex: Tunis, Sfax..."/>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="criteria-field">
+            <mat-label>Min Experience (years)</mat-label>
+            <mat-icon matPrefix>work_history</mat-icon>
+            <input matInput type="number"
+                   [(ngModel)]="screeningRequest.minExperienceYears"
+                   placeholder="Ex: 2" min="0"/>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="criteria-field">
+            <mat-label>Top candidates</mat-label>
+            <mat-icon matPrefix>leaderboard</mat-icon>
+            <mat-select [(ngModel)]="screeningRequest.topN">
+              <mat-option [value]="3">Top 3</mat-option>
+              <mat-option [value]="5">Top 5</mat-option>
+              <mat-option [value]="10">Top 10</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+        </div>
+
+        <div class="skills-criteria">
+          <label class="skills-label">
+            <mat-icon>psychology</mat-icon>
+            Required Skills
+          </label>
+          <div class="skills-input-row">
+            <mat-form-field appearance="outline" class="skill-input-field">
+              <mat-label>Add a skill</mat-label>
+              <input matInput [(ngModel)]="newSkill"
+                     (keydown.enter)="addScreeningSkill()"
+                     placeholder="Ex: Java, Marketing, Excel..."/>
+            </mat-form-field>
+            <button mat-raised-button class="add-skill-btn"
+                    (click)="addScreeningSkill()" [disabled]="!newSkill.trim()">
+              <mat-icon>add</mat-icon> Add
+            </button>
+          </div>
+          <div class="skills-tags-row"
+               *ngIf="screeningRequest.requiredSkills.length > 0">
+            <span *ngFor="let skill of screeningRequest.requiredSkills"
+                  class="screening-skill-tag">
+              {{ skill }}
+              <mat-icon (click)="removeScreeningSkill(skill)">close</mat-icon>
+            </span>
+          </div>
+        </div>
+
+        <button mat-raised-button class="screen-btn"
+                (click)="runScreening()" [disabled]="loadingScreening">
+          <mat-progress-spinner *ngIf="loadingScreening"
+            mode="indeterminate" diameter="20">
+          </mat-progress-spinner>
+          <mat-icon *ngIf="!loadingScreening">rocket_launch</mat-icon>
+          {{ loadingScreening ? 'Analyzing CVs...' : 'Analyze & Recommend' }}
+        </button>
+      </div>
+
+      <div *ngIf="screeningResults.length > 0" class="screening-results">
+        <mat-divider></mat-divider>
+        <div class="results-header">
+          <h3>
+            <mat-icon>emoji_events</mat-icon>
+            Top {{ screeningResults.length }} Recommended Candidates
+          </h3>
+        </div>
+
+        <div *ngFor="let result of screeningResults"
+             class="result-card"
+             [class.gold]="result.rank === 1"
+             [class.silver]="result.rank === 2"
+             [class.bronze]="result.rank === 3">
+
+          <div class="result-top">
+            <div class="result-rank"
+                 [ngStyle]="{'background': getRankColor(result.rank)}">
+              {{ result.rank === 1 ? '🥇' : result.rank === 2 ? '🥈' : result.rank === 3 ? '🥉' : '#' + result.rank }}
+            </div>
+            <div class="result-info">
+              <h4>{{ result.applicantName }}</h4>
+              <p><mat-icon>email</mat-icon>{{ result.applicantEmail }}</p>
+              <div class="result-meta">
+                <span *ngIf="result.detectedLocation">
+                  <mat-icon>location_on</mat-icon>{{ result.detectedLocation }}
+                </span>
+                <span *ngIf="result.detectedExperienceYears > 0">
+                  <mat-icon>work_history</mat-icon>
+                  {{ result.detectedExperienceYears }} yr(s)
+                </span>
+              </div>
+            </div>
+            <div class="result-score"
+                 [ngStyle]="{'background': getScoreBg(result.overallScore),
+                             'color': getScoreColor(result.overallScore)}">
+              <span class="score-num">{{ result.overallScore }}%</span>
+              <span class="score-lvl">{{ result.matchLevel }}</span>
+            </div>
+          </div>
+
+          <div class="result-bars">
+            <div class="result-bar-row">
+              <span>Skills</span>
+              <div class="result-bar-track">
+                <div class="result-bar-fill"
+                     [style.width]="(result.skillsScore * 100) + '%'"
+                     style="background: #7c3aed"></div>
+              </div>
+              <span>{{ (result.skillsScore * 100).toFixed(0) }}%</span>
+            </div>
+            <div class="result-bar-row">
+              <span>Location</span>
+              <div class="result-bar-track">
+                <div class="result-bar-fill"
+                     [style.width]="(result.locationScore * 100) + '%'"
+                     style="background: #1877f2"></div>
+              </div>
+              <span>{{ (result.locationScore * 100).toFixed(0) }}%</span>
+            </div>
+            <div class="result-bar-row">
+              <span>Experience</span>
+              <div class="result-bar-track">
+                <div class="result-bar-fill"
+                     [style.width]="(result.experienceScore * 100) + '%'"
+                     style="background: #00c853"></div>
+              </div>
+              <span>{{ (result.experienceScore * 100).toFixed(0) }}%</span>
+            </div>
+          </div>
+
+          <div class="result-skills">
+            <span *ngFor="let skill of result.matchedSkills" class="skill-matched">
+              ✅ {{ skill }}
+            </span>
+            <span *ngFor="let skill of result.missingSkills" class="skill-missing">
+              ❌ {{ skill }}
+            </span>
+          </div>
+
+          <div class="result-actions">
+            <button mat-stroked-button (click)="openFile(result.cvUrl)"
+                    class="result-cv-btn">
+              <mat-icon>picture_as_pdf</mat-icon> View CV
+            </button>
+            <button mat-raised-button class="result-accept-btn"
+                    (click)="acceptFromScreening(result.applicationId)">
+              <mat-icon>check_circle</mat-icon> Schedule Interview
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div *ngIf="screeningResults.length === 0 && !loadingScreening && screeningDone"
+           class="screening-empty">
+        <mat-icon>search_off</mat-icon>
+        <p>No candidates found matching your criteria</p>
+      </div>
+    </div>
+  </mat-card>
+
+  <!-- ─── PLAGIAT DETECTION ──────────────────────── -->
+  <mat-card class="screening-card" style="margin-top: 16px;">
+    <div class="screening-header" (click)="togglePlagiat()">
+      <div class="screening-header-left">
+        <div class="screening-icon"
+             style="background: linear-gradient(135deg, #dc2626, #991b1b);">
+          <mat-icon>content_copy</mat-icon>
+        </div>
+        <div>
+          <h2> Plagiat Detection — CV Similarity</h2>
+          <p>Detect similar or copied CVs between candidates</p>
+        </div>
+      </div>
+      <mat-icon class="toggle-icon">
+        {{ showPlagiat ? 'expand_less' : 'expand_more' }}
+      </mat-icon>
+    </div>
+
+    <div *ngIf="showPlagiat">
+      <mat-divider></mat-divider>
+
+      <div class="screening-body">
+        <mat-form-field appearance="outline" class="criteria-field">
+          <mat-label>Filter by Offer (optional)</mat-label>
+          <mat-icon matPrefix>work</mat-icon>
+          <mat-select [(ngModel)]="selectedPlagiatOfferId">
+            <mat-option [value]="null">All offers</mat-option>
+            <mat-option *ngFor="let offer of jobOffers" [value]="offer.id">
+              {{ offer.title }}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <button mat-raised-button class="screen-btn"
+                style="background: linear-gradient(135deg, #dc2626, #991b1b) !important;"
+                (click)="runPlagiatDetection()" [disabled]="loadingPlagiat">
+          <mat-progress-spinner *ngIf="loadingPlagiat"
+            mode="indeterminate" diameter="20">
+          </mat-progress-spinner>
+          <mat-icon *ngIf="!loadingPlagiat">plagiarism</mat-icon>
+          {{ loadingPlagiat ? 'Analyzing CVs...' : 'Detect Plagiat' }}
+        </button>
+      </div>
+
+      <div *ngIf="plagiatDone" class="screening-results">
+        <mat-divider></mat-divider>
+
+        <!-- Aucun plagiat -->
+        <div *ngIf="plagiatResults.length === 0" class="screening-empty">
+          <mat-icon style="color: #16a34a; font-size: 48px;
+                           width: 48px; height: 48px;">verified</mat-icon>
+          <p style="color: #166534; font-weight: 700;">
+            ✅ No plagiat detected! All CVs are unique.
+          </p>
+        </div>
+
+        <!-- Liste des paires -->
+        <div *ngIf="plagiatResults.length > 0">
+          <div class="results-header">
+            <h3>
+              <mat-icon>warning</mat-icon>
+              {{ plagiatResults.length }} suspicious pair(s) detected
+            </h3>
+          </div>
+
+          <div *ngFor="let result of plagiatResults"
+               class="result-card"
+               [ngStyle]="{'border-color': getPlagiatColor(result.plagiatLevel),
+                           'background': getPlagiatBg(result.plagiatLevel)}">
+
+            <!-- Header -->
+            <div class="plagiat-header">
+              <span class="plagiat-level-badge"
+                    [ngStyle]="{'background': getPlagiatColor(result.plagiatLevel),
+                                'color': 'white'}">
+                {{ getPlagiatIcon(result.plagiatLevel) }} {{ result.plagiatLevel }}
+              </span>
+              <span class="plagiat-percent"
+                    [ngStyle]="{'color': getPlagiatColor(result.plagiatLevel)}">
+                {{ result.similarityPercent }}% similar
+              </span>
+            </div>
+
+            <!-- Barre -->
+            <div class="plagiat-bar-track">
+              <div class="plagiat-bar-fill"
+                   [style.width]="result.similarityPercent + '%'"
+                   [ngStyle]="{'background': getPlagiatColor(result.plagiatLevel)}">
+              </div>
+            </div>
+
+            <!-- Candidats -->
+            <div class="plagiat-candidates">
+
+              <!-- Candidat 1 -->
+              <div class="plagiat-candidate">
+                <div class="plagiat-avatar"
+                     [ngStyle]="{'background': getPlagiatColor(result.plagiatLevel)}">
+                  {{ result.applicantName1.charAt(0).toUpperCase() }}
+                </div>
+                <div>
+                  <span class="plagiat-name">{{ result.applicantName1 }}</span>
+                  <span class="plagiat-email">{{ result.applicantEmail1 }}</span>
+                  <span class="status-badge small"
+                        [ngStyle]="{'background': getStatusBg(getAppStatus(result.applicationId1)),
+                                    'color': getStatusColor(getAppStatus(result.applicationId1))}">
+                    {{ getStatusLabel(getAppStatus(result.applicationId1)) }}
+                  </span>
+                </div>
+              </div>
+
+              <div class="plagiat-vs">
+                <mat-icon>compare_arrows</mat-icon>
+                <span>VS</span>
+              </div>
+
+              <!-- Candidat 2 -->
+              <div class="plagiat-candidate">
+                <div class="plagiat-avatar"
+                     [ngStyle]="{'background': getPlagiatColor(result.plagiatLevel)}">
+                  {{ result.applicantName2.charAt(0).toUpperCase() }}
+                </div>
+                <div>
+                  <span class="plagiat-name">{{ result.applicantName2 }}</span>
+                  <span class="plagiat-email">{{ result.applicantEmail2 }}</span>
+                  <span class="status-badge small"
+                        [ngStyle]="{'background': getStatusBg(getAppStatus(result.applicationId2)),
+                                    'color': getStatusColor(getAppStatus(result.applicationId2))}">
+                    {{ getStatusLabel(getAppStatus(result.applicationId2)) }}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- ✅ Status Buttons + Actions -->
+            <div style="margin-top: 14px; display: flex;
+                        flex-direction: column; gap: 10px;">
+
+              <!-- Candidat 1 buttons -->
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <span style="font-size: 11px; font-weight: 700; color: #64748b;">
+                  📋 {{ result.applicantName1 }}
+                </span>
+                <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+                  <button
+                    *ngFor="let s of ['PENDING','INTERVIEW','ACCEPTED','REJECTED','BLOCKED']"
+                    style="padding: 4px 10px; border-radius: 8px; font-size: 10px;
+                           font-weight: 700; border: 1.5px solid; cursor: pointer;
+                           transition: all 0.2s ease;"
+                    [ngStyle]="{
+                      'background': getAppStatus(result.applicationId1) === s
+                        ? getStatusBg(s) : 'white',
+                      'color': getStatusColor(s),
+                      'border-color': getStatusColor(s)
+                    }"
+                    (click)="changePlagiatStatus(result.applicationId1, s)">
+                    {{ getStatusLabel(s) }}
+                  </button>
+                </div>
+              </div>
+
+              <!-- Candidat 2 buttons -->
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <span style="font-size: 11px; font-weight: 700; color: #64748b;">
+                  📋 {{ result.applicantName2 }}
+                </span>
+                <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+                  <button
+                    *ngFor="let s of ['PENDING','INTERVIEW','ACCEPTED','REJECTED','BLOCKED']"
+                    style="padding: 4px 10px; border-radius: 8px; font-size: 10px;
+                           font-weight: 700; border: 1.5px solid; cursor: pointer;
+                           transition: all 0.2s ease;"
+                    [ngStyle]="{
+                      'background': getAppStatus(result.applicationId2) === s
+                        ? getStatusBg(s) : 'white',
+                      'color': getStatusColor(s),
+                      'border-color': getStatusColor(s)
+                    }"
+                    (click)="changePlagiatStatus(result.applicationId2, s)">
+                    {{ getStatusLabel(s) }}
+                  </button>
+                </div>
+              </div>
+
+              <!-- View CVs + Reject Both -->
+              <div style="display: flex; gap: 8px; align-items: center;
+                          flex-wrap: wrap;">
+                <button mat-stroked-button class="result-cv-btn"
+                        (click)="openFile(getAppCvUrl(result.applicationId1))">
+                  <mat-icon>picture_as_pdf</mat-icon> CV 1
+                </button>
+                <button mat-stroked-button class="result-cv-btn"
+                        (click)="openFile(getAppCvUrl(result.applicationId2))">
+                  <mat-icon>picture_as_pdf</mat-icon> CV 2
+                </button>
+                <button mat-raised-button
+                        style="background: #dc2626 !important;
+                               color: white !important;
+                               border-radius: 10px !important;
+                               margin-left: auto;"
+                        (click)="rejectPlagiat(result.applicationId1,
+                                               result.applicationId2)">
+                  <mat-icon>block</mat-icon> Reject Both
+                </button>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </mat-card>
+
+  <!-- ─── RISK FILTERS ─────────────────────────── -->
+  <div class="risk-filters">
+    <button class="risk-btn"
+            [class.active]="selectedRisk === 'ALL'"
+            (click)="selectedRisk = 'ALL'; applyFilters()">
+      <mat-icon>list_alt</mat-icon> All
+      <span class="risk-count">{{ getRiskCount('ALL') }}</span>
+    </button>
+    <button class="risk-btn clean"
+            [class.active]="selectedRisk === 'CLEAN'"
+            (click)="selectedRisk = 'CLEAN'; applyFilters()">
+      <mat-icon>verified</mat-icon> Verified
+      <span class="risk-count">{{ getRiskCount('CLEAN') }}</span>
+    </button>
+    <button class="risk-btn suspicious"
+            [class.active]="selectedRisk === 'SUSPICIOUS'"
+            (click)="selectedRisk = 'SUSPICIOUS'; applyFilters()">
+      <mat-icon>warning</mat-icon> To Check
+      <span class="risk-count">{{ getRiskCount('SUSPICIOUS') }}</span>
+    </button>
+    <button class="risk-btn blocked"
+            [class.active]="selectedRisk === 'BLOCKED'"
+            (click)="selectedRisk = 'BLOCKED'; applyFilters()">
+      <mat-icon>dangerous</mat-icon> Risky
+      <span class="risk-count">{{ getRiskCount('BLOCKED') }}</span>
+    </button>
+  </div>
+
+  <!-- ─── FILTERS ───────────────────────────────── -->
+  <mat-card class="filters-card">
+    <div class="filters-row">
+      <mat-form-field appearance="outline" class="filter-field">
+        <mat-label>Search</mat-label>
+        <mat-icon matPrefix>search</mat-icon>
+        <input matInput [(ngModel)]="searchTerm"
+               (ngModelChange)="applyFilters()"
+               placeholder="Name, email...">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="filter-field">
+        <mat-label>Filter by offer</mat-label>
+        <mat-select [(ngModel)]="selectedJobOfferId"
+                    (ngModelChange)="applyFilters()">
+          <mat-option value="ALL">All offers</mat-option>
+          <mat-option *ngFor="let offer of jobOffers"
+                      [value]="offer.id?.toString()">
+            {{ offer.title }} ({{ offer.contractType }})
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="filter-field">
+        <mat-label>Status</mat-label>
+        <mat-select [(ngModel)]="selectedStatus"
+                    (ngModelChange)="applyFilters()">
+          <mat-option value="ALL">All statuses</mat-option>
+          <mat-option value="PENDING">⏳ Pending</mat-option>
+          <mat-option value="INTERVIEW">📅 Interview</mat-option>
+          <mat-option value="ACCEPTED">✅ Accepted</mat-option>
+          <mat-option value="REJECTED">❌ Rejected</mat-option>
+          <mat-option value="CANCELLED">🚫 Cancelled</mat-option>
+          <mat-option value="BLOCKED">🚨 Blocked</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+  </mat-card>
+
+  <!-- ─── LOADING ───────────────────────────────── -->
+  <div *ngIf="loading" class="loading">
+    <mat-progress-spinner mode="indeterminate" diameter="40">
+    </mat-progress-spinner>
+    <p>Loading applications...</p>
+  </div>
+
+  <!-- ─── LISTE ─────────────────────────────────── -->
+  <div *ngIf="!loading" class="apps-list">
+
+    <div *ngIf="filteredApplications.length === 0" class="empty-state">
+      <mat-icon>inbox</mat-icon>
+      <p>No applications found</p>
+    </div>
+
+    <mat-card *ngFor="let app of paginatedApplications"
+              class="app-card"
+              [class.suspicious-card]="getRiskLevel(app.id!) === 'SUSPICIOUS'"
+              [class.blocked-card]="getRiskLevel(app.id!) === 'BLOCKED'"
+              (click)="openSidePanel(app)">
+      <div class="card-content">
+
+        <div class="candidate-section">
+          <div class="avatar"
+               [ngStyle]="{'background': getRiskBg(getRiskLevel(app.id!))}">
+            <span [ngStyle]="{'color': getRiskColor(getRiskLevel(app.id!))}">
+              {{ app.applicantName.charAt(0).toUpperCase() }}
+            </span>
+          </div>
+          <div class="candidate-info">
+            <h3>{{ app.applicantName }}</h3>
+            <p><mat-icon>email</mat-icon>{{ app.applicantEmail }}</p>
+          </div>
+        </div>
+
+        <div class="offer-section">
+          <span class="offer-title">{{ getJobTitle(app.jobOfferId) }}</span>
+          <span class="contract-chip">{{ getJobContractType(app.jobOfferId) }}</span>
+        </div>
+
+        <div class="status-section" (click)="$event.stopPropagation()">
+          <span class="status-badge"
+                [ngStyle]="{'background': getStatusBg(app.status || ''),
+                            'color': getStatusColor(app.status || '')}">
+            {{ getStatusLabel(app.status || '') }}
+          </span>
+          <mat-select [(ngModel)]="app.status"
+                      (ngModelChange)="updateStatus(app, $event)"
+                      class="status-select"
+                      [disabled]="app.status === 'BLOCKED'">
+            <mat-option value="PENDING">Pending</mat-option>
+            <mat-option value="INTERVIEW">Interview</mat-option>
+            <mat-option value="ACCEPTED">Accepted</mat-option>
+            <mat-option value="REJECTED">Rejected</mat-option>
+            <mat-option value="CANCELLED">Cancelled</mat-option>
+          </mat-select>
+        </div>
+
+        <div class="risk-badge-wrap"
+             [matTooltip]="getFraud(app.id!)?.reasons?.join(' | ') || 'No issues detected'"
+             matTooltipPosition="above">
+          <div class="risk-badge"
+               [ngStyle]="{'background': getRiskBg(getRiskLevel(app.id!)),
+                           'color': getRiskColor(getRiskLevel(app.id!))}">
+            <mat-icon>{{ getRiskIcon(getRiskLevel(app.id!)) }}</mat-icon>
+            {{ getRiskLabel(getRiskLevel(app.id!)) }}
+          </div>
+          <div class="confidence-bar-track">
+            <div class="confidence-bar-fill"
+                 [style.width]="getConfidenceScore(app.id!) + '%'"
+                 [ngStyle]="{'background': getRiskColor(getRiskLevel(app.id!))}">
+            </div>
+          </div>
+          <span class="confidence-pct"
+                [ngStyle]="{'color': getRiskColor(getRiskLevel(app.id!))}">
+            {{ getConfidenceScore(app.id!) }}%
+          </span>
+        </div>
+
+        <div class="docs-section" (click)="$event.stopPropagation()">
+          <button mat-stroked-button (click)="openFile(app.cvUrl!)"
+                  [disabled]="!app.cvUrl" class="doc-btn">
+            <mat-icon>picture_as_pdf</mat-icon> CV
+          </button>
+          <button mat-stroked-button (click)="openFile(app.coverLetterUrl!)"
+                  [disabled]="!app.coverLetterUrl" class="doc-btn">
+            <mat-icon>picture_as_pdf</mat-icon> Letter
+          </button>
+        </div>
+
+      </div>
+    </mat-card>
+
+    <app-pagination
+      *ngIf="filteredApplications.length > 0"
+      [totalItems]="filteredApplications.length"
+      [pageSize]="pageSize"
+      [currentPage]="currentPage"
+      (pageChange)="onPageChange($event)"
+      (pageSizeChange)="onPageSizeChange($event)">
+    </app-pagination>
+  </div>
+
+</div>
+
+<!-- ─── SIDE PANEL ────────────────────────────── -->
+<div class="side-panel-overlay" *ngIf="showSidePanel"
+     (click)="closeSidePanel()"></div>
+
+<div class="side-panel" [class.open]="showSidePanel">
+  <ng-container *ngIf="selectedApp">
+
+    <div class="panel-header">
+      <div class="panel-avatar">
+        {{ selectedApp.applicantName.charAt(0).toUpperCase() }}
+      </div>
+      <div class="panel-title">
+        <h3>{{ selectedApp.applicantName }}</h3>
+        <p>{{ selectedApp.applicantEmail }}</p>
+      </div>
+      <button mat-icon-button (click)="closeSidePanel()" class="close-btn">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+
+    <div class="panel-body">
+
+      <!-- Update Status -->
+      <div class="panel-section">
+        <h4><mat-icon>edit</mat-icon> Update Status</h4>
+        <div class="status-update-box">
+          <p class="current-status-label">Current status :</p>
+          <span class="status-badge"
+                [ngStyle]="{'background': getStatusBg(selectedApp.status || ''),
+                            'color': getStatusColor(selectedApp.status || '')}">
+            {{ getStatusLabel(selectedApp.status || '') }}
+          </span>
+          <div class="status-buttons">
+            <button
+              *ngFor="let s of ['PENDING','INTERVIEW','ACCEPTED','REJECTED','CANCELLED']"
+              class="status-quick-btn"
+              [class.active]="selectedApp.status === s"
+              [ngStyle]="selectedApp.status === s ? {
+                'background': getStatusBg(s),
+                'color': getStatusColor(s),
+                'border-color': getStatusColor(s)
+              } : {}"
+              (click)="updateStatusFromPanel(selectedApp, s)">
+              {{ getStatusLabel(s) }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <mat-divider></mat-divider>
+
+      <!-- Interview Date -->
+      <div class="panel-section" *ngIf="selectedApp.interviewDate">
+        <h4><mat-icon>calendar_today</mat-icon> Interview Scheduled</h4>
+        <div class="interview-date-box">
+          <mat-icon>event</mat-icon>
+          <span>{{ selectedApp.interviewDate | date:'dd MMM yyyy, HH:mm' }}</span>
+        </div>
+      </div>
+
+      <mat-divider *ngIf="selectedApp.interviewDate"></mat-divider>
+
+      <!-- CV Analysis -->
+      <div class="panel-section">
+        <h4><mat-icon>psychology</mat-icon> CV Analysis</h4>
+
+        <button mat-raised-button class="analyze-btn"
+                (click)="analyzeCv(selectedApp!.id!)"
+                [disabled]="loadingCv || !selectedApp!.cvUrl">
+          <mat-progress-spinner *ngIf="loadingCv"
+            mode="indeterminate" diameter="16">
+          </mat-progress-spinner>
+          <mat-icon *ngIf="!loadingCv">auto_awesome</mat-icon>
+          {{ loadingCv ? 'Analyzing...' : 'Analyze CV' }}
+        </button>
+
+        <div *ngIf="cvAnalysis && cvAnalysis.applicationId === selectedApp!.id"
+             class="cv-analysis">
+
+          <div class="cv-overall"
+               [ngStyle]="{'background': getCvScoreBg(cvAnalysis.overallScore),
+                           'border-color': getCvScoreColor(cvAnalysis.overallScore)}">
+            <span class="cv-percent"
+                  [ngStyle]="{'color': getCvScoreColor(cvAnalysis.overallScore)}">
+              {{ cvAnalysis.overallPercent }}%
+            </span>
+            <span class="cv-level"
+                  [ngStyle]="{'color': getCvScoreColor(cvAnalysis.overallScore)}">
+              {{ cvAnalysis.matchLevel }} Match
+            </span>
+          </div>
+
+          <div class="cv-scores">
+            <div class="cv-score-row">
+              <span class="cv-score-label">
+                <mat-icon>psychology</mat-icon>Skills
+              </span>
+              <div class="cv-bar-track">
+                <div class="cv-bar-fill"
+                     [style.width]="(cvAnalysis.skillsScore * 100) + '%'"
+                     [ngStyle]="{'background': getCvScoreColor(cvAnalysis.skillsScore)}">
+                </div>
+              </div>
+              <span class="cv-score-val">
+                {{ (cvAnalysis.skillsScore * 100).toFixed(0) }}%
+              </span>
+            </div>
+            <div class="cv-score-row">
+              <span class="cv-score-label">
+                <mat-icon>location_on</mat-icon>Location
+              </span>
+              <div class="cv-bar-track">
+                <div class="cv-bar-fill"
+                     [style.width]="(cvAnalysis.locationScore * 100) + '%'"
+                     [ngStyle]="{'background': getCvScoreColor(cvAnalysis.locationScore)}">
+                </div>
+              </div>
+              <span class="cv-score-val">
+                {{ (cvAnalysis.locationScore * 100).toFixed(0) }}%
+              </span>
+            </div>
+            <div class="cv-score-row">
+              <span class="cv-score-label">
+                <mat-icon>work_history</mat-icon>Experience
+              </span>
+              <div class="cv-bar-track">
+                <div class="cv-bar-fill"
+                     [style.width]="(cvAnalysis.experienceScore * 100) + '%'"
+                     [ngStyle]="{'background': getCvScoreColor(cvAnalysis.experienceScore)}">
+                </div>
+              </div>
+              <span class="cv-score-val">
+                {{ (cvAnalysis.experienceScore * 100).toFixed(0) }}%
+              </span>
+            </div>
+          </div>
+
+          <div class="cv-detected">
+            <div class="detected-item" *ngIf="cvAnalysis.detectedLocation">
+              <mat-icon>location_on</mat-icon>
+              <span>{{ cvAnalysis.detectedLocation }}</span>
+            </div>
+            <div class="detected-item" *ngIf="cvAnalysis.detectedExperienceYears > 0">
+              <mat-icon>work_history</mat-icon>
+              <span>{{ cvAnalysis.detectedExperienceYears }} year(s) experience</span>
+            </div>
+            <div class="detected-item" *ngIf="cvAnalysis.detectedEmail">
+              <mat-icon>email</mat-icon>
+              <span>{{ cvAnalysis.detectedEmail }}</span>
+            </div>
+          </div>
+
+          <div class="cv-skills" *ngIf="cvAnalysis.detectedSkills.length > 0">
+            <p class="skills-label">Detected Skills :</p>
+            <div class="skills-tags">
+              <span *ngFor="let skill of cvAnalysis.detectedSkills"
+                    class="skill-tag">
+                {{ skill }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <mat-divider></mat-divider>
+
+      <!-- Trust Score -->
+      <div class="panel-section">
+        <h4><mat-icon>security</mat-icon> Trust Score</h4>
+        <div class="trust-score-box"
+             [ngStyle]="{'background': getRiskBg(getRiskLevel(selectedApp.id!))}">
+          <div class="trust-score-number"
+               [ngStyle]="{'color': getRiskColor(getRiskLevel(selectedApp.id!))}">
+            {{ getConfidenceScore(selectedApp.id!) }}%
+          </div>
+          <div class="trust-score-bar-track">
+            <div class="trust-score-bar-fill"
+                 [style.width]="getConfidenceScore(selectedApp.id!) + '%'"
+                 [ngStyle]="{'background': getRiskColor(getRiskLevel(selectedApp.id!))}">
+            </div>
+          </div>
+          <div class="trust-level-badge"
+               [ngStyle]="{'background': getRiskColor(getRiskLevel(selectedApp.id!))}">
+            <mat-icon>{{ getRiskIcon(getRiskLevel(selectedApp.id!)) }}</mat-icon>
+            {{ getRiskLabel(getRiskLevel(selectedApp.id!)) }}
+          </div>
+        </div>
+      </div>
+
+      <mat-divider></mat-divider>
+
+      <!-- Alert Points -->
+      <div class="panel-section"
+           *ngIf="getFraud(selectedApp.id!)?.reasons?.length">
+        <h4><mat-icon>report_problem</mat-icon> Alert Points</h4>
+        <div class="alert-list">
+          <div *ngFor="let reason of getFraud(selectedApp.id!)?.reasons"
+               class="alert-item">
+            <mat-icon>chevron_right</mat-icon>{{ reason }}
+          </div>
+        </div>
+      </div>
+
+      <mat-divider *ngIf="getFraud(selectedApp.id!)?.reasons?.length">
+      </mat-divider>
+
+      <!-- Score Details -->
+      <div class="panel-section" *ngIf="getFraud(selectedApp.id!)">
+        <h4><mat-icon>bar_chart</mat-icon> Score Details</h4>
+        <div class="score-details">
+          <div class="score-row">
+            <span class="score-name"><mat-icon>speed</mat-icon>Speed</span>
+            <div class="score-bar-track">
+              <div class="score-bar-fill speed"
+                   [style.width]="(getFraud(selectedApp.id!)!.speedScore * 100) + '%'">
+              </div>
+            </div>
+            <span class="score-val">
+              {{ (getFraud(selectedApp.id!)!.speedScore * 100).toFixed(0) }}%
+            </span>
+          </div>
+          <div class="score-row">
+            <span class="score-name"><mat-icon>email</mat-icon>Email</span>
+            <div class="score-bar-track">
+              <div class="score-bar-fill email"
+                   [style.width]="(getFraud(selectedApp.id!)!.emailScore * 100) + '%'">
+              </div>
+            </div>
+            <span class="score-val">
+              {{ (getFraud(selectedApp.id!)!.emailScore * 100).toFixed(0) }}%
+            </span>
+          </div>
+          <div class="score-row">
+            <span class="score-name">
+              <mat-icon>content_copy</mat-icon>Duplicate
+            </span>
+            <div class="score-bar-track">
+              <div class="score-bar-fill duplicate"
+                   [style.width]="(getFraud(selectedApp.id!)!.duplicateScore * 100) + '%'">
+              </div>
+            </div>
+            <span class="score-val">
+              {{ (getFraud(selectedApp.id!)!.duplicateScore * 100).toFixed(0) }}%
+            </span>
+          </div>
+          <div class="score-row">
+            <span class="score-name"><mat-icon>inventory</mat-icon>Volume</span>
+            <div class="score-bar-track">
+              <div class="score-bar-fill volume"
+                   [style.width]="(getFraud(selectedApp.id!)!.volumeScore * 100) + '%'">
+              </div>
+            </div>
+            <span class="score-val">
+              {{ (getFraud(selectedApp.id!)!.volumeScore * 100).toFixed(0) }}%
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <mat-divider></mat-divider>
+
+      <!-- Application Info -->
+      <div class="panel-section">
+        <h4><mat-icon>info</mat-icon> Application Info</h4>
+        <div class="info-rows">
+          <div class="info-row">
+            <span class="info-label">Position</span>
+            <span class="info-val">{{ getJobTitle(selectedApp.jobOfferId) }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Status</span>
+            <span class="status-badge small"
+                  [ngStyle]="{'background': getStatusBg(selectedApp.status || ''),
+                              'color': getStatusColor(selectedApp.status || '')}">
+              {{ getStatusLabel(selectedApp.status || '') }}
+            </span>
+          </div>
+          <div class="info-row" *ngIf="selectedApp.date">
+            <span class="info-label">Applied on</span>
+            <span class="info-val">
+              {{ selectedApp.date | date:'dd MMM yyyy' }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Documents -->
+      <div class="panel-actions">
+        <button mat-stroked-button (click)="openFile(selectedApp.cvUrl!)"
+                [disabled]="!selectedApp.cvUrl" class="panel-doc-btn">
+          <mat-icon>picture_as_pdf</mat-icon> View CV
+        </button>
+        <button mat-stroked-button (click)="openFile(selectedApp.coverLetterUrl!)"
+                [disabled]="!selectedApp.coverLetterUrl" class="panel-doc-btn">
+          <mat-icon>picture_as_pdf</mat-icon> View Letter
+        </button>
+      </div>
+
+    </div>
+  </ng-container>
+</div>
+
+<!-- ─── INTERVIEW POPUP ───────────────────────── -->
+<div class="interview-overlay" *ngIf="showInterviewPopup"
+     (click)="cancelInterview()"></div>
+
+<div class="interview-popup" *ngIf="showInterviewPopup">
+  <div class="popup-header">
+    <div class="popup-icon"><mat-icon>calendar_month</mat-icon></div>
+    <div>
+      <h3>Schedule Interview</h3>
+      <p>Choose a date or let the system decide</p>
+    </div>
+    <button mat-icon-button (click)="cancelInterview()">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <mat-divider></mat-divider>
+
+  <div class="popup-body">
+    <div class="candidate-info-box">
+      <div class="candidate-avatar-small">
+        {{ pendingInterviewApp?.applicantName?.charAt(0)?.toUpperCase() }}
+      </div>
+      <div>
+        <span class="candidate-name">
+          {{ pendingInterviewApp?.applicantName }}
+        </span>
+        <span class="candidate-email">
+          {{ pendingInterviewApp?.applicantEmail }}
+        </span>
+      </div>
+    </div>
+
+    <div class="schedule-option"
+         [class.selected]="scheduleMode === 'auto'"
+         (click)="scheduleMode = 'auto'">
+      <div class="option-icon auto"><mat-icon>auto_awesome</mat-icon></div>
+      <div class="option-info">
+        <span class="option-title">Automatic Scheduling</span>
+        <span class="option-desc">
+          System finds next available slot (9h-15h, no conflicts)
+        </span>
+      </div>
+      <mat-icon class="option-check" *ngIf="scheduleMode === 'auto'">
+        check_circle
+      </mat-icon>
+    </div>
+
+    <div class="schedule-option"
+         [class.selected]="scheduleMode === 'manual'"
+         (click)="scheduleMode = 'manual'">
+      <div class="option-icon manual"><mat-icon>edit_calendar</mat-icon></div>
+      <div class="option-info">
+        <span class="option-title">Manual Scheduling</span>
+        <span class="option-desc">Choose a specific date and time</span>
+      </div>
+      <mat-icon class="option-check" *ngIf="scheduleMode === 'manual'">
+        check_circle
+      </mat-icon>
+    </div>
+
+    <div class="datetime-picker" *ngIf="scheduleMode === 'manual'">
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Interview Date & Time</mat-label>
+        <mat-icon matPrefix>schedule</mat-icon>
+        <input matInput type="datetime-local"
+               [(ngModel)]="selectedInterviewDate" [min]="minDate"/>
+        <mat-hint>Between 9:00 and 15:00</mat-hint>
+      </mat-form-field>
+    </div>
+  </div>
+
+  <div class="popup-actions">
+    <button mat-stroked-button (click)="cancelInterview()">Cancel</button>
+    <button mat-raised-button class="confirm-btn"
+            (click)="confirmInterview()"
+            [disabled]="scheduleMode === 'manual' && !selectedInterviewDate">
+      <mat-icon>check</mat-icon> Confirm Interview
+    </button>
+  </div>
+</div>  

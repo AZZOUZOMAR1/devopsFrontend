@@ -1,0 +1,33 @@
+<div class="feedback-view-dialog">
+  <h2 mat-dialog-title>
+    <mat-icon>star</mat-icon>
+    Avis - {{ data.evenement.titre }}
+  </h2>
+
+  <mat-dialog-content>
+    <mat-progress-bar *ngIf="loading" mode="indeterminate"></mat-progress-bar>
+    <div *ngIf="!loading">
+      <div class="moyenne-display" *ngIf="moyenne != null">
+        <span class="stars">{{ moyenne.toFixed(1) }}</span>
+        <mat-icon class="star-icon">star</mat-icon>
+        <span class="count">({{ nombreAvis }} avis)</span>
+      </div>
+      <div class="feedbacks-list" *ngIf="feedbacks.length > 0">
+        <div class="feedback-item" *ngFor="let f of feedbacks">
+          <div class="feedback-header">
+            <span class="nom">{{ f.nomEtudiant || 'Anonyme' }}</span>
+            <span class="note">
+              <mat-icon *ngFor="let _ of getStars(f.note)" class="star-small">star</mat-icon>
+            </span>
+          </div>
+          <p class="commentaire" *ngIf="f.commentaire">{{ f.commentaire }}</p>
+        </div>
+      </div>
+      <p *ngIf="feedbacks.length === 0" class="no-avis">Aucun avis pour le moment.</p>
+    </div>
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end">
+    <button mat-button (click)="close()">Fermer</button>
+  </mat-dialog-actions>
+</div>

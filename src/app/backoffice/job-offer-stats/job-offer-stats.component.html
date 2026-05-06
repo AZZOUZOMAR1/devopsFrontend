@@ -1,0 +1,219 @@
+<div class="stats-container">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <div class="header-icon">
+        <mat-icon>bar_chart</mat-icon>
+      </div>
+      <div>
+        <h1>Statistiques des Offres</h1>
+        <p class="subtitle">Analyse complète en temps réel</p>
+      </div>
+    </div>
+    <button mat-raised-button (click)="loadStats()" class="refresh-btn">
+      <mat-icon>refresh</mat-icon>
+      Actualiser
+    </button>
+  </div>
+
+  <!-- Chargement -->
+  <div *ngIf="loading" class="loading">
+    <mat-progress-spinner mode="indeterminate" diameter="48"></mat-progress-spinner>
+    <p>Chargement des statistiques...</p>
+  </div>
+
+  <!-- Erreur -->
+  <div *ngIf="error && !loading" class="error-state">
+    <mat-icon>error_outline</mat-icon>
+    <p>{{ error }}</p>
+    <button mat-raised-button color="primary" (click)="loadStats()">Réessayer</button>
+  </div>
+
+  <div *ngIf="stats && !loading">
+
+    <!-- KPI Cards -->
+    <div class="kpi-grid">
+      <div class="kpi-card blue">
+        <div class="kpi-icon"><mat-icon>work</mat-icon></div>
+        <div class="kpi-info">
+          <span class="kpi-value">{{ stats.totalOffers }}</span>
+          <span class="kpi-label">Total Offres</span>
+        </div>
+      </div>
+      <div class="kpi-card green">
+        <div class="kpi-icon"><mat-icon>check_circle</mat-icon></div>
+        <div class="kpi-info">
+          <span class="kpi-value">{{ stats.activeOffers }}</span>
+          <span class="kpi-label">Offres Actives</span>
+        </div>
+      </div>
+      <div class="kpi-card red">
+        <div class="kpi-icon"><mat-icon>cancel</mat-icon></div>
+        <div class="kpi-info">
+          <span class="kpi-value">{{ stats.expiredOffers }}</span>
+          <span class="kpi-label">Offres Expirées</span>
+        </div>
+      </div>
+      <div class="kpi-card purple">
+        <div class="kpi-icon"><mat-icon>people</mat-icon></div>
+        <div class="kpi-info">
+          <span class="kpi-value">{{ stats.totalApplications }}</span>
+          <span class="kpi-label">Total Candidatures</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Offre la plus populaire -->
+    <div class="popular-card">
+      <div class="popular-icon">
+        <mat-icon>emoji_events</mat-icon>
+      </div>
+      <div class="popular-info">
+        <span class="popular-label">🏆 Offre la plus populaire</span>
+        <h3>{{ stats.mostPopularOfferTitle }}</h3>
+        <p>{{ stats.mostPopularOfferCompany }} — {{ stats.mostPopularOfferApplications }} candidature(s)</p>
+      </div>
+    </div>
+
+    <!-- Graphiques -->
+    <div class="charts-grid">
+
+      <!-- Candidatures par statut -->
+      <mat-card class="chart-card">
+        <mat-card-header>
+          <mat-icon mat-card-avatar>donut_large</mat-icon>
+          <mat-card-title>Candidatures par statut</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="bar-chart">
+            <div *ngFor="let entry of getEntries(stats.applicationsByStatus)" class="bar-row">
+              <span class="bar-label">{{ entry.key }}</span>
+              <div class="bar-track">
+                <div class="bar-fill"
+                     [style.width]="getBarWidth(entry.value, getMaxValue(stats.applicationsByStatus))"
+                     [style.background]="getStatusColor(entry.key)">
+                </div>
+              </div>
+              <span class="bar-value">{{ entry.value }}</span>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Offres par type de contrat -->
+      <mat-card class="chart-card">
+        <mat-card-header>
+          <mat-icon mat-card-avatar>pie_chart</mat-icon>
+          <mat-card-title>Offres par type de contrat</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="bar-chart">
+            <div *ngFor="let entry of getEntries(stats.offersByContractType)" class="bar-row">
+              <span class="bar-label">{{ entry.key }}</span>
+              <div class="bar-track">
+                <div class="bar-fill"
+                     [style.width]="getBarWidth(entry.value, getMaxValue(stats.offersByContractType))"
+                     [style.background]="getContractColor(entry.key)">
+                </div>
+              </div>
+              <span class="bar-value">{{ entry.value }}</span>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Salaire moyen par contrat -->
+      <mat-card class="chart-card">
+        <mat-card-header>
+          <mat-icon mat-card-avatar>euro</mat-icon>
+          <mat-card-title>Salaire moyen par contrat</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div *ngIf="getEntries(stats.avgSalaryByContractType).length === 0" class="no-data">
+            <mat-icon>info</mat-icon>
+            <p>Aucun salaire renseigné</p>
+          </div>
+          <div class="bar-chart" *ngIf="getEntries(stats.avgSalaryByContractType).length > 0">
+            <div *ngFor="let entry of getEntries(stats.avgSalaryByContractType)" class="bar-row">
+              <span class="bar-label">{{ entry.key }}</span>
+              <div class="bar-track">
+                <div class="bar-fill"
+                     [style.width]="getBarWidth(entry.value, getMaxValue(stats.avgSalaryByContractType))"
+                     [style.background]="getContractColor(entry.key)">
+                </div>
+              </div>
+              <span class="bar-value">{{ entry.value | number:'1.0-0' }} €</span>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Taux de remplissage -->
+      <mat-card class="chart-card">
+        <mat-card-header>
+          <mat-icon mat-card-avatar>speed</mat-icon>
+          <mat-card-title>Taux de remplissage</mat-card-title>
+          <mat-card-subtitle>Candidatures / 5 max</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="bar-chart">
+            <div *ngFor="let entry of getEntries(stats.fillRateByOffer)" class="bar-row">
+              <span class="bar-label">{{ entry.key | slice:0:20 }}</span>
+              <div class="bar-track">
+                <div class="bar-fill"
+                     [style.width]="entry.value + '%'"
+                     [style.background]="getFillRateColor(entry.value)">
+                </div>
+              </div>
+              <span class="bar-value">{{ entry.value }}%</span>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+    </div>
+
+    <!-- Top 5 Offres -->
+    <mat-card class="top5-card">
+      <mat-card-header>
+        <mat-icon mat-card-avatar>leaderboard</mat-icon>
+        <mat-card-title>Top 5 Offres les plus populaires</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="top5-list">
+          <div *ngFor="let offer of stats.top5Offers; let i = index" class="top5-item">
+            <div class="rank" [class.gold]="i===0" [class.silver]="i===1" [class.bronze]="i===2">
+              {{ i + 1 }}
+            </div>
+            <div class="top5-info">
+              <h4>{{ offer.title }}</h4>
+              <p>{{ offer.company }}</p>
+            </div>
+            <span class="contract-chip" [ngStyle]="{'background': getContractColor(offer.contractType) + '22', 'color': getContractColor(offer.contractType)}">
+              {{ offer.contractType }}
+            </span>
+            <div class="top5-stats">
+              <span class="app-count">
+                <mat-icon>people</mat-icon>
+                {{ offer.applicationCount }}
+              </span>
+              <div class="fill-rate-bar">
+                <div class="fill-rate-fill"
+                     [style.width]="offer.fillRate + '%'"
+                     [style.background]="getFillRateColor(offer.fillRate)">
+                </div>
+              </div>
+              <span class="fill-pct">{{ offer.fillRate }}%</span>
+            </div>
+          </div>
+          <div *ngIf="stats.top5Offers.length === 0" class="no-data">
+            <mat-icon>inbox</mat-icon>
+            <p>Aucune candidature pour le moment</p>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+  </div>
+</div>
