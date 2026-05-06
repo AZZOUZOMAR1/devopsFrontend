@@ -1,6 +1,6 @@
 // Pipeline CI — Frontend Angular (équivalent microservice Evenement)
 // Job Jenkins recommandé : devops-frontend_CI
-// Prérequis agent Linux : Docker, sonar-scanner (PATH) ou plugin SonarQube
+// Prérequis agent Linux : Docker (SonarQube via image sonarsource/sonar-scanner-cli, pas besoin de sonar-scanner sur l’hôte)
 
 pipeline {
     agent any
@@ -46,11 +46,20 @@ pipeline {
         stage('3. SonarQube devops-frontend') {
             steps {
                 withSonarQubeEnv("${SONARQUBE_SERVER}") {
-                    sh """
-                        sonar-scanner \\
-                            -Dsonar.projectKey=${SONAR_PROJECT_KEY} \\
-                            -Dsonar.projectName=${SONAR_PROJECT_NAME}
-                    """
+                    // SONAR_AUTH_TOKEN est injecté par le plugin ; l'image Docker attend souvent SONAR_TOKEN
+                    sh '''#!/bin/bash
+                        set -e
+                        export SONAR_TOKEN="${SONAR_AUTH_TOKEN:-$SONAR_TOKEN}"
+                        docker pull sonarsource/sonar-scanner-cli:latest
+                        docker run --rm \
+                            -e SONAR_HOST_URL \
+                            -e SONAR_TOKEN \
+                            -v "$WORKSPACE:/usr/src" \
+                            -w /usr/src \
+                            sonarsource/sonar-scanner-cli:latest \
+                            -Dsonar.projectKey=devops-frontend \
+                            -Dsonar.projectName=devops-frontend
+                    '''
                 }
             }
         }
