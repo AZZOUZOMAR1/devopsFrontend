@@ -1,7 +1,7 @@
 // Pipeline CI — Frontend Angular
 // Réduit la conso disque :
 // - une seule build Angular dans le Dockerfile (plus de npm ci/ng build dans WORKSPACE qui dupliquait Go de node_modules + dist).
-// - post : suppression des artefacts locaux + images intermédiaires de ce build uniquement.
+// - post : nettoyage WORKSPACE limité dans le temps (pas de docker rmi qui peut bloquer le démon Docker).
 // Si Jenkins affiche encore "No space left on device", libérez aussi le disque sur le master : /var/lib/jenkins + vieux workspaces.
 
 pipeline {
@@ -111,20 +111,33 @@ pipeline {
     post {
         success {
             echo "✅ CI devops-frontend OK - image ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}"
-            build job: 'devops-frontend_CD', wait: false
+            script {
+                try {
+                    build job: 'devops-frontend_CD', wait: false, propagate: false
+                } catch (Exception e) {
+                    echo "⚠️ Job devops-frontend_CD non déclenché (${e.message}) — vérifiez que ce job existe."
+                }
+            }
         }
         failure {
             echo '❌ CI devops-frontend échoué — logs build / Sonar / Docker / Trivy'
         }
+        // Ne pas bloquer : docker rmi ici peut rester pendu si le démon Docker est lent / verrouillé.
+        // Nettoyer les images sur l’agent avec un cron : docker image prune -f
         always {
-            sh """
+            timeout(time: 4, unit: 'MINUTES') {
+                sh """
 #!/bin/bash
 set +e
-docker logout >/dev/null 2>&1 || true
-rm -rf \"\${WORKSPACE}/node_modules\" \"\${WORKSPACE}/dist\" \"\${WORKSPACE}/.angular\" || true
-# Retire uniquement cette image construite localement (après push, le registre conserve le manifeste).
-docker image rm ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} ${DOCKER_IMAGE_NAME}:latest 2>/dev/null || true
+if command -v timeout >/dev/null 2>&1; then
+  timeout 30 docker logout >/dev/null 2>&1 || true
+  timeout 180 rm -rf "\${WORKSPACE}/node_modules" "\${WORKSPACE}/dist" "\${WORKSPACE}/.angular" || true
+else
+  docker logout >/dev/null 2>&1 || true
+  rm -rf "\${WORKSPACE}/node_modules" "\${WORKSPACE}/dist" "\${WORKSPACE}/.angular" || true
+fi
 """
+            }
         }
     }
 }
